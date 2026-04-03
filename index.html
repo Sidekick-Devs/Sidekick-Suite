@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sidekick Suites</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f4;
+      --bg-tertiary: #eeece8;
+      --text-primary: #1c1917;
+      --text-secondary: #57534e;
+      --text-tertiary: #a8a29e;
+      --border: rgba(0,0,0,0.1);
+      --border-hover: rgba(0,0,0,0.2);
+      --accent: #1D9E75;
+      --accent-light: #e1f5ee;
+      --accent-text: #0f6e56;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --danger-text: #991b1b;
+      --info-light: #eff6ff;
+      --info-text: #1d4ed8;
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #1c1917;
+      --bg-secondary: #292524;
+      --bg-tertiary: #3b3533;
+      --text-primary: #fafaf9;
+      --text-secondary: #a8a29e;
+      --text-tertiary: #78716c;
+      --border: rgba(255,255,255,0.1);
+      --border-hover: rgba(255,255,255,0.2);
+      --accent-light: #042c1e;
+      --accent-text: #9fe1cb;
+      --danger-light: #3b0808;
+      --danger-text: #fca5a5;
+      --info-light: #1e3a5f;
+      --info-text: #93c5fd;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* TOP BAR */
+    .topbar {
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .topbar-logo {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+    .topbar-logo span { color: var(--accent); }
+    .topbar-spacer { flex: 1; }
+    .theme-btn {
+      width: 32px; height: 32px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .theme-btn:hover { background: var(--bg-secondary); }
+
+    /* LAYOUT */
+    .app {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 210px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      padding: 12px 0;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    .sidebar-section {
+      padding: 0 12px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-top: 12px;
+    }
+    .sidebar-section:first-child { margin-top: 0; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      margin: 1px 6px;
+      transition: all 0.1s;
+      user-select: none;
+    }
+    .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+    .nav-item.active {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .nav-icon {
+      width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      border-radius: 5px;
+      flex-shrink: 0;
+    }
+    .nav-item.active .nav-icon { background: var(--accent-light); }
+
+    /* MAIN */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--bg-primary);
+    }
+    .tool-pane {
+      display: none;
+      padding: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .tool-pane.active { display: flex; }
+
+    /* TOOL HEADER */
+    .tool-header { border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+    .tool-title { font-size: 18px; font-weight: 600; }
+    .tool-desc { font-size: 13px; color: var(--text-tertiary); margin-top: 3px; }
+
+    /* FORMS */
+    label.field-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 6px;
+    }
+    textarea, input[type=text], input[type=number], select {
+      width: 100%;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      transition: border-color 0.15s;
+    }
+    textarea { min-height: 130px; resize: vertical; line-height: 1.6; font-family: 'SFMono-Regular', Consolas, monospace; }
+    textarea:focus, input:focus, select:focus { outline: none; border-color: var(--accent); }
+    textarea.output-area { background: var(--bg-tertiary); cursor: default; }
+    select { cursor: pointer; }
+
+    /* BUTTONS */
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--bg-secondary); border-color: var(--border-hover); }
+    .btn:active { transform: scale(0.98); }
+    .btn.primary { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; }
+    .btn.primary:hover { opacity: 0.85; }
+    .btn.danger { color: var(--danger); border-color: var(--danger); }
+    .btn.danger:hover { background: var(--danger-light); }
+    .btn.success { background: var(--accent); color: white; border-color: transparent; }
+    .btn.success:hover { opacity: 0.9; }
+
+    /* GRID */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+    /* CHECKBOX GRID */
+    .check-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .check-item {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: var(--text-secondary);
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.1s;
+      user-select: none;
+    }
+    .check-item:hover { background: var(--bg-secondary); border-color: var(--border-hover); }
+    .check-item input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+
+    /* STAT CARDS */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .stat-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+    }
+    .stat-label { font-size: 11px; color: var(--text-tertiary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-val { font-size: 22px; font-weight: 600; color: var(--text-primary); margin-top: 4px; }
+
+    /* ALERTS */
+    .alert {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .alert-info { background: var(--info-light); color: var(--info-text); border: 1px solid rgba(29,78,216,0.2); }
+    .alert-success { background: var(--accent-light); color: var(--accent-text); border: 1px solid rgba(29,158,117,0.2); }
+    .alert-danger { background: var(--danger-light); color: var(--danger-text); border: 1px solid rgba(220,38,38,0.2); }
+
+    /* TAGS (tab switcher) */
+    .tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag {
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      background: transparent;
+      transition: all 0.1s;
+      user-select: none;
+    }
+    .tag:hover { border-color: var(--border-hover); color: var(--text-primary); }
+    .tag.active { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; }
+
+    /* PDF */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      text-align: center;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .drop-zone:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent-text); }
+    .drop-zone .drop-icon { font-size: 24px; margin-bottom: 8px; }
+    .file-list { display: flex; flex-direction: column; gap: 6px; }
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+    }
+    .file-item-icon { font-size: 16px; }
+    .file-item-name { flex: 1; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .file-item-size { color: var(--text-tertiary); font-size: 12px; }
+    .file-item-remove {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-tertiary); font-size: 18px; line-height: 1;
+      padding: 0 2px; transition: color 0.1s;
+    }
+    .file-item-remove:hover { color: var(--danger); }
+
+    /* REGEX HIGHLIGHT */
+    .rx-result {
+      min-height: 80px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+      white-space: pre-wrap;
+      line-height: 1.7;
+      word-break: break-all;
+    }
+    mark.rx-match {
+      background: #fef08a;
+      color: #78350f;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+    [data-theme="dark"] mark.rx-match { background: #713f12; color: #fef08a; }
+
+    /* COLOR */
+    .color-table { width: 100%; border-collapse: collapse; }
+    .color-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .color-table td:first-child { color: var(--text-secondary); font-size: 11px; font-weight: 600; text-transform: uppercase; width: 80px; }
+    .color-table td input {
+      width: 100%; border: none; background: transparent;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      color: var(--text-primary); font-size: 13px; padding: 0;
+    }
+    .color-table td input:focus { outline: none; }
+    .color-table tr:last-child td { border-bottom: none; }
+    .color-preview-row { display: flex; gap: 10px; }
+    .color-swatch { flex: 1; height: 64px; border-radius: var(--radius-lg); border: 1px solid var(--border); transition: background 0.2s; }
+    .color-text-preview { flex: 1; height: 64px; border-radius: var(--radius-lg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; transition: all 0.2s; }
+    .palette-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .palette-swatch { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: transform 0.1s; }
+    .palette-swatch:hover { transform: scale(1.1); }
+
+    /* WORD FREQ BADGES */
+    .freq-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .freq-badge strong { color: var(--accent); }
+
+    /* DIVIDER */
+    hr { border: none; border-top: 1px solid var(--border); }
+
+    /* SCROLL */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+    /* RESPONSIVE */
+    @media (max-width: 640px) {
+      .sidebar { width: 48px; }
+      .nav-item span:not(.nav-icon) { display: none; }
+      .grid-2, .grid-3, .grid-4, .check-grid, .stat-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">Sidekick<span>Suites</span></div>
+  <div class="topbar-spacer"></div>
+  <button class="theme-btn" onclick="toggleTheme()" title="Đổi theme">🌙</button>
+</div>
+
+<!-- APP -->
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">Văn bản</div>
+    <div class="nav-item active" onclick="switchTab('text',this)">
+      <span class="nav-icon">✦</span><span>Text Cleaner</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('encode',this)">
+      <span class="nav-icon">⇌</span><span>Chuyển mã</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('word',this)">
+      <span class="nav-icon">≡</span><span>Word Counter</span>
+    </div>
+
+    <div class="sidebar-section">Dev tools</div>
+    <div class="nav-item" onclick="switchTab('json',this)">
+      <span class="nav-icon">{}</span><span>JSON Format</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('regex',this)">
+      <span class="nav-icon">.*</span><span>Regex Tester</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('base64',this)">
+      <span class="nav-icon">⌗</span><span>Base64</span>
+    </div>
+
+    <div class="sidebar-section">Thiết kế</div>
+    <div class="nav-item" onclick="switchTab('color',this)">
+      <span class="nav-icon">◐</span><span>Color Convert</span>
+    </div>
+
+    <div class="sidebar-section">File</div>
+    <div class="nav-item" onclick="switchTab('pdf',this)">
+      <span class="nav-icon">▣</span><span>PDF Tools</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ===== TEXT CLEANER ===== -->
+    <div class="tool-pane active" id="tab-text">
+      <div class="tool-header">
+        <div class="tool-title">Text Cleaner</div>
+        <div class="tool-desc">Xóa, chuẩn hóa, làm sạch văn bản hàng loạt</div>
+      </div>
+      <div>
+        <label class="field-label">Văn bản đầu vào</label>
+        <textarea id="txt-in" placeholder="Dán văn bản cần làm sạch vào đây..." oninput="previewText()"></textarea>
+      </div>
+      <div class="check-grid">
+        <label class="check-item"><input type="checkbox" id="ck-trim" checked onchange="previewText()"> Trim khoảng trắng</label>
+        <label class="check-item"><input type="checkbox" id="ck-spaces" checked onchange="previewText()"> Chuẩn khoảng trắng</label>
+        <label class="check-item"><input type="checkbox" id="ck-lines" onchange="previewText()"> Xóa dòng trống</label>
+        <label class="check-item"><input type="checkbox" id="ck-special" onchange="previewText()"> Bỏ ký tự đặc biệt</label>
+        <label class="check-item"><input type="checkbox" id="ck-html" onchange="previewText()"> Strip HTML tags</label>
+        <label class="check-item"><input type="checkbox" id="ck-lower" onchange="previewText()"> lowercase</label>
+        <label class="check-item"><input type="checkbox" id="ck-upper" onchange="previewText()"> UPPERCASE</label>
+        <label class="check-item"><input type="checkbox" id="ck-url" onchange="previewText()"> Bỏ URL</label>
+        <label class="check-item"><input type="checkbox" id="ck-emoji" onchange="previewText()"> Bỏ emoji</label>
+        <label class="check-item"><input type="checkbox" id="ck-punct" onchange="previewText()"> Chuẩn dấu câu</label>
+        <label class="check-item"><input type="checkbox" id="ck-num" onchange="previewText()"> Bỏ số</label>
+        <label class="check-item"><input type="checkbox" id="ck-dup" onchange="previewText()"> Bỏ dòng trùng</label>
+      </div>
+      <div class="grid-2">
+        <div>
+          <label class="field-label">Find</label>
+          <input type="text" id="txt-find" placeholder="Chuỗi cần tìm..." oninput="previewText()">
+        </div>
+        <div>
+          <label class="field-label">Replace với</label>
+          <input type="text" id="txt-replace" placeholder="Thay bằng..." oninput="previewText()">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Kết quả (preview realtime)</label>
+        <textarea id="txt-out" class="output-area" readonly></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="applyText()">Áp dụng → Input</button>
+        <button class="btn success" onclick="copyText('txt-out')">📋 Sao chép</button>
+        <button class="btn" onclick="swapText()">⇅ Hoán đổi</button>
+        <button class="btn danger" onclick="clearAll('txt-in','txt-out')">Xóa</button>
+      </div>
+    </div>
+
+    <!-- ===== CHUYỂN MÃ ===== -->
+    <div class="tool-pane" id="tab-encode">
+      <div class="tool-header">
+        <div class="tool-title">Chuyển mã tiếng Việt</div>
+        <div class="tool-desc">Chuyển đổi giữa Unicode, ASCII không dấu, VIQR, Telex</div>
+      </div>
+      <div>
+        <label class="field-label">Văn bản đầu vào</label>
+        <textarea id="enc-in" placeholder="Nhập hoặc dán văn bản cần chuyển mã..." oninput="autoDetectEnc()"></textarea>
+      </div>
+      <div style="display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:140px;">
+          <label class="field-label">Từ</label>
+          <select id="enc-from">
+            <option value="unicode">Unicode (UTF-8)</option>
+            <option value="viqr">VIQR</option>
+            <option value="ascii">ASCII không dấu</option>
+          </select>
+        </div>
+        <button class="btn" style="margin-bottom:1px; flex-shrink:0;" onclick="swapEnc()">⇌ Đổi</button>
+        <div style="flex:1; min-width:140px;">
+          <label class="field-label">Sang</label>
+          <select id="enc-to">
+            <option value="ascii">ASCII không dấu</option>
+            <option value="unicode">Unicode (UTF-8)</option>
+            <option value="viqr">VIQR</option>
+            <option value="slug">URL slug</option>
+          </select>
+        </div>
+      </div>
+      <div class="alert alert-info" id="enc-detect-box">Phát hiện: <strong id="enc-detect">—</strong></div>
+      <div>
+        <label class="field-label">Kết quả</label>
+        <textarea id="enc-out" class="output-area" readonly></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="convertEnc()">Chuyển đổi</button>
+        <button class="btn success" onclick="copyText('enc-out')">📋 Sao chép</button>
+        <button class="btn danger" onclick="clearAll('enc-in','enc-out')">Xóa</button>
+      </div>
+      <hr>
+      <div class="alert alert-info" style="line-height:1.8;">
+        <strong>Bảng Telex:</strong> aa→â · oo→ô · aw→ă · uw→ư · ow→ơ · dd→đ<br>
+        <strong>Tone:</strong> s→sắc · f→huyền · r→hỏi · x→ngã · j→nặng · z→bỏ dấu
+      </div>
+    </div>
+
+    <!-- ===== WORD COUNTER ===== -->
+    <div class="tool-pane" id="tab-word">
+      <div class="tool-header">
+        <div class="tool-title">Word Counter & Readability</div>
+        <div class="tool-desc">Đếm từ, ký tự, câu và ước tính thời gian đọc</div>
+      </div>
+      <div>
+        <label class="field-label">Văn bản</label>
+        <textarea id="wc-text" placeholder="Dán văn bản vào đây..." oninput="countWords()" style="min-height:180px;"></textarea>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Ký tự</div><div class="stat-val" id="wc-chars">0</div></div>
+        <div class="stat-card"><div class="stat-label">Từ</div><div class="stat-val" id="wc-words">0</div></div>
+        <div class="stat-card"><div class="stat-label">Câu</div><div class="stat-val" id="wc-sentences">0</div></div>
+        <div class="stat-card"><div class="stat-label">Đoạn</div><div class="stat-val" id="wc-paras">0</div></div>
+        <div class="stat-card"><div class="stat-label">Đọc (~200 wpm)</div><div class="stat-val" id="wc-read">—</div></div>
+        <div class="stat-card"><div class="stat-label">Nói (~130 wpm)</div><div class="stat-val" id="wc-speak">—</div></div>
+        <div class="stat-card"><div class="stat-label">Từ/câu TB</div><div class="stat-val" id="wc-avgword">—</div></div>
+        <div class="stat-card"><div class="stat-label">Câu/đoạn TB</div><div class="stat-val" id="wc-avgsen">—</div></div>
+      </div>
+      <hr>
+      <div>
+        <label class="field-label">Từ xuất hiện nhiều nhất</label>
+        <div id="wc-freq" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+      </div>
+    </div>
+
+    <!-- ===== JSON ===== -->
+    <div class="tool-pane" id="tab-json">
+      <div class="tool-header">
+        <div class="tool-title">JSON Formatter</div>
+        <div class="tool-desc">Format, validate, minify và sort keys</div>
+      </div>
+      <div>
+        <label class="field-label">JSON đầu vào</label>
+        <textarea id="json-in" placeholder='{"key": "value", "arr": [1,2,3]}' oninput="liveJson()"></textarea>
+      </div>
+      <div id="json-status" style="font-size:13px; min-height:20px;"></div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="formatJson(2)">Format (2 spaces)</button>
+        <button class="btn" onclick="formatJson(4)">Format (4 spaces)</button>
+        <button class="btn" onclick="minifyJson()">Minify</button>
+        <button class="btn" onclick="sortJsonKeys()">Sort keys A→Z</button>
+        <button class="btn success" onclick="copyText('json-out')">📋 Sao chép</button>
+        <button class="btn danger" onclick="clearAll('json-in','json-out')">Xóa</button>
+      </div>
+      <div>
+        <label class="field-label">Kết quả</label>
+        <textarea id="json-out" class="output-area" readonly style="min-height:200px;"></textarea>
+      </div>
+    </div>
+
+    <!-- ===== REGEX ===== -->
+    <div class="tool-pane" id="tab-regex">
+      <div class="tool-header">
+        <div class="tool-title">Regex Tester</div>
+        <div class="tool-desc">Test regular expressions với highlight trực quan</div>
+      </div>
+      <div>
+        <label class="field-label">Pattern & Flags</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span style="font-size:18px; color:var(--text-tertiary);">/</span>
+          <input type="text" id="rx-pattern" placeholder="(\w+)@(\w+\.\w+)" oninput="runRegex()" style="flex:1;">
+          <span style="font-size:18px; color:var(--text-tertiary);">/</span>
+          <input type="text" id="rx-flags" value="gi" style="width:64px;" oninput="runRegex()" title="Flags: g=global, i=ignore case, m=multiline">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Văn bản kiểm tra</label>
+        <textarea id="rx-text" placeholder="Nhập văn bản để test regex..." oninput="runRegex()"></textarea>
+      </div>
+      <div id="rx-status" style="font-size:13px; min-height:20px;"></div>
+      <div>
+        <label class="field-label">Kết quả (matches highlight)</label>
+        <div class="rx-result" id="rx-result"></div>
+      </div>
+      <div id="rx-matches-container">
+        <label class="field-label" style="margin-top:8px;">Danh sách matches</label>
+        <div id="rx-matches" style="font-family:monospace; font-size:12px; color:var(--text-secondary); line-height:1.8;"></div>
+      </div>
+      <hr>
+      <div>
+        <label class="field-label">Replace với ($1, $2 cho groups)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="rx-replace" placeholder="$1 replacement...">
+          <button class="btn" onclick="doReplace()" style="flex-shrink:0;">Replace all</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Kết quả sau replace</label>
+        <textarea id="rx-replaced" class="output-area" readonly></textarea>
+      </div>
+    </div>
+
+    <!-- ===== BASE64 ===== -->
+    <div class="tool-pane" id="tab-base64">
+      <div class="tool-header">
+        <div class="tool-title">Base64 Encoder / Decoder</div>
+        <div class="tool-desc">Encode / decode text và file sang Base64</div>
+      </div>
+      <div class="tag-row">
+        <span class="tag active" onclick="switchB64('text',this)">Text</span>
+        <span class="tag" onclick="switchB64('file',this)">File → Base64</span>
+        <span class="tag" onclick="switchB64('url',this)">URL encode/decode</span>
+      </div>
+      <div id="b64-text-section">
+        <label class="field-label">Văn bản / Base64</label>
+        <textarea id="b64-in" placeholder="Nhập text hoặc Base64..." oninput="autoB64()"></textarea>
+        <div id="b64-hint" class="alert alert-info" style="display:none; margin-top:8px;"></div>
+      </div>
+      <div id="b64-file-section" style="display:none;">
+        <div class="drop-zone" onclick="document.getElementById('b64-file').click()">
+          <div class="drop-icon">📎</div>
+          Nhấn để chọn file cần encode thành Base64
+        </div>
+        <input type="file" id="b64-file" style="display:none" onchange="encodeFile(this)">
+      </div>
+      <div id="b64-url-section" style="display:none;">
+        <label class="field-label">URL / Encoded string</label>
+        <textarea id="url-in" placeholder="Nhập URL hoặc encoded string..." oninput="autoUrl()"></textarea>
+      </div>
+      <div class="btn-row" id="b64-btns">
+        <button class="btn primary" onclick="doB64('encode')">Encode →</button>
+        <button class="btn" onclick="doB64('decode')">← Decode</button>
+        <button class="btn success" onclick="copyText('b64-out')">📋 Sao chép</button>
+        <button class="btn danger" onclick="clearAll('b64-in','b64-out')">Xóa</button>
+      </div>
+      <div>
+        <label class="field-label">Kết quả</label>
+        <textarea id="b64-out" class="output-area" readonly></textarea>
+      </div>
+    </div>
+
+    <!-- ===== COLOR ===== -->
+    <div class="tool-pane" id="tab-color">
+      <div class="tool-header">
+        <div class="tool-title">Color Converter</div>
+        <div class="tool-desc">Chuyển đổi HEX ↔ RGB ↔ HSL ↔ HSV ↔ CMYK</div>
+      </div>
+      <div style="display:flex; gap:12px; align-items:flex-end;">
+        <div style="flex:1;">
+          <label class="field-label">HEX</label>
+          <input type="text" id="col-hex" value="#1D9E75" oninput="convertColor('hex')" placeholder="#RRGGBB">
+        </div>
+        <div>
+          <label class="field-label">Color picker</label>
+          <input type="color" id="col-picker" value="#1D9E75" oninput="syncPicker()" style="width:52px; height:40px; padding:2px 4px; cursor:pointer;">
+        </div>
+      </div>
+      <table class="color-table" style="border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; border-spacing:0;">
+        <tr><td>RGB</td><td><input type="text" id="col-rgb" oninput="convertColor('rgb')" placeholder="29, 158, 117"></td></tr>
+        <tr><td>HSL</td><td><input type="text" id="col-hsl" oninput="convertColor('hsl')" placeholder="158°, 69%, 37%"></td></tr>
+        <tr><td>HSV</td><td id="col-hsv" style="color:var(--text-secondary);"></td></tr>
+        <tr><td>CMYK</td><td id="col-cmyk" style="color:var(--text-secondary);"></td></tr>
+        <tr><td>CSS</td><td id="col-css" style="color:var(--text-secondary); font-family:monospace; font-size:12px;"></td></tr>
+      </table>
+      <div class="color-preview-row">
+        <div class="color-swatch" id="col-preview" style="background:#1D9E75;"></div>
+        <div class="color-text-preview" id="col-preview-text" style="background:#1D9E75; color:white;">Aa Bb Cc 123</div>
+      </div>
+      <div>
+        <label class="field-label">Shades palette</label>
+        <div class="palette-row" id="col-palette"></div>
+      </div>
+    </div>
+
+    <!-- ===== PDF ===== -->
+    <div class="tool-pane" id="tab-pdf">
+      <div class="tool-header">
+        <div class="tool-title">PDF Tools</div>
+        <div class="tool-desc">Ghép, tách, xóa trang, xoay, resize — xử lý hoàn toàn trên máy bạn</div>
+      </div>
+      <div class="tag-row">
+        <span class="tag active" onclick="switchPdf('merge',this)">Ghép PDF</span>
+        <span class="tag" onclick="switchPdf('split',this)">Tách trang</span>
+        <span class="tag" onclick="switchPdf('delete',this)">Xóa trang</span>
+        <span class="tag" onclick="switchPdf('rotate',this)">Xoay trang</span>
+        <span class="tag" onclick="switchPdf('resize',this)">Resize trang</span>
+      </div>
+
+      <!-- MERGE -->
+      <div id="pdf-merge">
+        <div class="drop-zone" onclick="document.getElementById('pdf-files-merge').click()" id="drop-merge">
+          <div class="drop-icon">📄</div>
+          Nhấn để thêm file PDF (có thể chọn nhiều)<br>
+          <small style="color:var(--text-tertiary);">Kéo để sắp xếp thứ tự</small>
+        </div>
+        <input type="file" id="pdf-files-merge" multiple accept=".pdf" style="display:none" onchange="addMergeFiles(this)">
+        <div class="file-list" id="merge-list"></div>
+        <div>
+          <label class="field-label">Chuẩn hóa kích thước trước khi ghép</label>
+          <select id="merge-resize">
+            <option value="none">Giữ nguyên kích thước gốc</option>
+            <option value="a4p">Chuẩn A4 dọc (210×297mm)</option>
+            <option value="a4l">Chuẩn A4 ngang (297×210mm)</option>
+            <option value="a3p">Chuẩn A3 dọc (297×420mm)</option>
+            <option value="fit">Fit theo trang đầu tiên</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="processPdf('merge')">📥 Ghép & Tải về</button>
+          <button class="btn danger" onclick="clearMergeList()">Xóa danh sách</button>
+        </div>
+      </div>
+
+      <!-- SPLIT -->
+      <div id="pdf-split" style="display:none;">
+        <div class="drop-zone" onclick="document.getElementById('pdf-split-file').click()">
+          <div class="drop-icon">✂️</div>Chọn file PDF cần tách
+        </div>
+        <input type="file" id="pdf-split-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'split')">
+        <div id="split-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="split-info-text"></div>
+          <div>
+            <label class="field-label">Trang cần trích xuất (để trống = tất cả)</label>
+            <input type="text" id="split-pages" placeholder="VD: 1,3,5-8 hoặc 2-4">
+          </div>
+          <div>
+            <label class="field-label">Chế độ tách</label>
+            <select id="split-mode">
+              <option value="extract">Trích các trang đã chọn → 1 file</option>
+              <option value="each">Mỗi trang → 1 file riêng (tải về từng file)</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="processPdf('split')">📥 Tách & Tải về</button>
+        </div>
+      </div>
+
+      <!-- DELETE -->
+      <div id="pdf-delete" style="display:none;">
+        <div class="drop-zone" onclick="document.getElementById('pdf-del-file').click()">
+          <div class="drop-icon">🗑️</div>Chọn file PDF
+        </div>
+        <input type="file" id="pdf-del-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'del')">
+        <div id="del-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="del-info-text"></div>
+          <div>
+            <label class="field-label">Trang cần xóa</label>
+            <input type="text" id="del-pages" placeholder="VD: 2,4,7-9">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="processPdf('delete')">📥 Xóa trang & Tải về</button>
+        </div>
+      </div>
+
+      <!-- ROTATE -->
+      <div id="pdf-rotate" style="display:none;">
+        <div class="drop-zone" onclick="document.getElementById('pdf-rot-file').click()">
+          <div class="drop-icon">🔄</div>Chọn file PDF cần xoay
+        </div>
+        <input type="file" id="pdf-rot-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'rot')">
+        <div id="rot-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="rot-info-text"></div>
+          <div class="grid-2">
+            <div>
+              <label class="field-label">Trang cần xoay (để trống = tất cả)</label>
+              <input type="text" id="rot-pages" placeholder="VD: 1,3 hoặc 2-5">
+            </div>
+            <div>
+              <label class="field-label">Góc xoay</label>
+              <select id="rot-angle">
+                <option value="90">90° (sang phải)</option>
+                <option value="180">180°</option>
+                <option value="270">270° (sang trái)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="processPdf('rotate')">📥 Xoay & Tải về</button>
+        </div>
+      </div>
+
+      <!-- RESIZE -->
+      <div id="pdf-resize" style="display:none;">
+        <div class="drop-zone" onclick="document.getElementById('pdf-cmp-file').click()">
+          <div class="drop-icon">📐</div>Chọn file PDF cần resize
+        </div>
+        <input type="file" id="pdf-cmp-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'cmp')">
+        <div id="cmp-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="cmp-info-text"></div>
+          <div>
+            <label class="field-label">Kích thước trang đích</label>
+            <select id="cmp-size">
+              <option value="a4p">A4 dọc (595×842 pt)</option>
+              <option value="a4l">A4 ngang (842×595 pt)</option>
+              <option value="a3p">A3 dọc (842×1190 pt)</option>
+              <option value="letter">Letter (612×792 pt)</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="processPdf('resize')">📥 Resize & Tải về</button>
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="font-size:12px;">🔒 File PDF không được upload lên server. Toàn bộ xử lý diễn ra trên trình duyệt của bạn.</div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ────────────────────────────────────────────────────────
+// THEME
+// ────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+  document.querySelector('.theme-btn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+}
+(function() {
+  const t = localStorage.getItem('theme');
+  if (t === 'dark') { document.documentElement.setAttribute('data-theme','dark'); document.querySelector('.theme-btn').textContent = '☀️'; }
+})();
+
+// ────────────────────────────────────────────────────────
+// NAV
+// ────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tool-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ────────────────────────────────────────────────────────
+// TEXT CLEANER
+// ────────────────────────────────────────────────────────
+function previewText() {
+  document.getElementById('txt-out').value = cleanText(document.getElementById('txt-in').value);
+}
+function cleanText(s) {
+  if (document.getElementById('ck-html').checked) s = s.replace(/<[^>]*>/g, '');
+  if (document.getElementById('ck-url').checked) s = s.replace(/https?:\/\/\S+/g, '');
+  if (document.getElementById('ck-emoji').checked) s = s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]/gu, '');
+  if (document.getElementById('ck-special').checked) s = s.replace(/[^\w\s\u00C0-\u024F\u1E00-\u1EFF.,!?;:()\-]/g, '');
+  if (document.getElementById('ck-num').checked) s = s.replace(/\d+/g, '');
+  if (document.getElementById('ck-spaces').checked) s = s.replace(/[ \t]+/g, ' ');
+  if (document.getElementById('ck-lines').checked) s = s.replace(/\n{2,}/g, '\n');
+  if (document.getElementById('ck-trim').checked) s = s.split('\n').map(l => l.trim()).join('\n').trim();
+  if (document.getElementById('ck-punct').checked) s = s.replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])(?=[^\s])/g, '$1 ');
+  if (document.getElementById('ck-dup').checked) s = [...new Set(s.split('\n'))].join('\n');
+  const find = document.getElementById('txt-find').value;
+  if (find) s = s.replaceAll(find, document.getElementById('txt-replace').value);
+  if (document.getElementById('ck-lower').checked) s = s.toLowerCase();
+  if (document.getElementById('ck-upper').checked) s = s.toUpperCase();
+  return s;
+}
+function applyText() { document.getElementById('txt-in').value = document.getElementById('txt-out').value; previewText(); }
+function swapText() {
+  const a = document.getElementById('txt-in').value;
+  document.getElementById('txt-in').value = document.getElementById('txt-out').value;
+  document.getElementById('txt-out').value = a;
+}
+function copyText(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.value).then(() => showCopied(id)).catch(() => {});
+}
+function showCopied(id) {
+  const btn = event && event.target;
+  if (btn) { const orig = btn.textContent; btn.textContent = '✓ Đã copy!'; setTimeout(() => btn.textContent = orig, 1500); }
+}
+function clearAll(a, b) { document.getElementById(a).value = ''; if(b) document.getElementById(b).value = ''; }
+
+// ────────────────────────────────────────────────────────
+// ENCODING
+// ────────────────────────────────────────────────────────
+const asciiMap = [['à','a'],['á','a'],['ả','a'],['ã','a'],['ạ','a'],['ă','a'],['ằ','a'],['ắ','a'],['ẳ','a'],['ẵ','a'],['ặ','a'],['â','a'],['ầ','a'],['ấ','a'],['ẩ','a'],['ẫ','a'],['ậ','a'],['è','e'],['é','e'],['ẻ','e'],['ẽ','e'],['ẹ','e'],['ê','e'],['ề','e'],['ế','e'],['ể','e'],['ễ','e'],['ệ','e'],['ì','i'],['í','i'],['ỉ','i'],['ĩ','i'],['ị','i'],['ò','o'],['ó','o'],['ỏ','o'],['õ','o'],['ọ','o'],['ô','o'],['ồ','o'],['ố','o'],['ổ','o'],['ỗ','o'],['ộ','o'],['ơ','o'],['ờ','o'],['ớ','o'],['ở','o'],['ỡ','o'],['ợ','o'],['ù','u'],['ú','u'],['ủ','u'],['ũ','u'],['ụ','u'],['ư','u'],['ừ','u'],['ứ','u'],['ử','u'],['ữ','u'],['ự','u'],['ỳ','y'],['ý','y'],['ỷ','y'],['ỹ','y'],['ỵ','y'],['đ','d'],['À','A'],['Á','A'],['Â','A'],['Ã','A'],['È','E'],['É','E'],['Ê','E'],['Ì','I'],['Í','I'],['Ò','O'],['Ó','O'],['Ô','O'],['Õ','O'],['Ù','U'],['Ú','U'],['Ý','Y'],['Đ','D'],['Ă','A'],['Ắ','A'],['Ằ','A'],['Ẳ','A'],['Ẵ','A'],['Ặ','A'],['Â','A'],['Ấ','A'],['Ầ','A'],['Ẩ','A'],['Ẫ','A'],['Ậ','A'],['Ơ','O'],['Ớ','O'],['Ờ','O'],['Ở','O'],['Ỡ','O'],['Ợ','O'],['Ư','U'],['Ứ','U'],['Ừ','U'],['Ử','U'],['Ữ','U'],['Ự','U']];
+const viqrMap = [['ắ','a\\''],['ặ','a.'],['ầ','a`'],['ấ','a\''],['ẫ','a~'],['ẩ','a?'],['â','a^'],['ằ','aw`'],['ắ','aw\''],['ẳ','aw?'],['ẵ','aw~'],['ặ','aw.'],['ă','aw'],['à','a`'],['á','a\''],['ả','a?'],['ã','a~'],['ạ','a.'],['ề','e`'],['ế','e\''],['ể','e?'],['ễ','e~'],['ệ','e.'],['ê','e^'],['è','e`'],['é','e\''],['ẻ','e?'],['ẽ','e~'],['ẹ','e.'],['ì','i`'],['í','i\''],['ỉ','i?'],['ĩ','i~'],['ị','i.'],['ồ','o`'],['ố','o\''],['ổ','o?'],['ỗ','o~'],['ộ','o.'],['ô','o^'],['ờ','ow`'],['ớ','ow\''],['ở','ow?'],['ỡ','ow~'],['ợ','ow.'],['ơ','ow'],['ò','o`'],['ó','o\''],['ỏ','o?'],['õ','o~'],['ọ','o.'],['ừ','uw`'],['ứ','uw\''],['ử','uw?'],['ữ','uw~'],['ự','uw.'],['ư','uw'],['ù','u`'],['ú','u\''],['ủ','u?'],['ũ','u~'],['ụ','u.'],['ỳ','y`'],['ý','y\''],['ỷ','y?'],['ỹ','y~'],['ỵ','y.'],['đ','dd']];
+function convertEnc() {
+  let s = document.getElementById('enc-in').value;
+  const to = document.getElementById('enc-to').value;
+  if (to === 'ascii') asciiMap.forEach(([v,a]) => { s = s.split(v).join(a); });
+  else if (to === 'viqr') viqrMap.forEach(([v,q]) => { s = s.split(v).join(q); });
+  else if (to === 'slug') {
+    asciiMap.forEach(([v,a]) => { s = s.split(v).join(a); });
+    s = s.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').trim();
+  }
+  document.getElementById('enc-out').value = s;
+}
+function autoDetectEnc() {
+  const s = document.getElementById('enc-in').value;
+  const hasViet = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i.test(s);
+  document.getElementById('enc-detect').textContent = hasViet ? 'Unicode (có dấu tiếng Việt)' : (s.includes("'") || s.includes('`') ? 'Có thể VIQR' : 'ASCII / không dấu');
+}
+function swapEnc() {
+  const f = document.getElementById('enc-from'), t = document.getElementById('enc-to');
+  [f.value, t.value] = [t.value, f.value];
+}
+
+// ────────────────────────────────────────────────────────
+// WORD COUNT
+// ────────────────────────────────────────────────────────
+function countWords() {
+  const s = document.getElementById('wc-text').value;
+  const chars = s.length;
+  const words = s.trim() ? s.trim().split(/\s+/).length : 0;
+  const sentences = (s.match(/[.!?]+/g) || []).length;
+  const paras = s.trim() ? s.split(/\n{2,}/).filter(p => p.trim()).length : 0;
+  document.getElementById('wc-chars').textContent = chars.toLocaleString('vi-VN');
+  document.getElementById('wc-words').textContent = words.toLocaleString('vi-VN');
+  document.getElementById('wc-sentences').textContent = sentences;
+  document.getElementById('wc-paras').textContent = paras;
+  const fmt = sec => sec < 60 ? sec + 's' : `${Math.floor(sec/60)}p ${sec%60}s`;
+  document.getElementById('wc-read').textContent = words ? fmt(Math.round(words/200*60)) : '—';
+  document.getElementById('wc-speak').textContent = words ? fmt(Math.round(words/130*60)) : '—';
+  document.getElementById('wc-avgword').textContent = sentences ? (words/sentences).toFixed(1) + ' từ' : '—';
+  document.getElementById('wc-avgsen').textContent = (paras && sentences) ? (sentences/paras).toFixed(1) + ' câu' : '—';
+  const freq = {};
+  s.toLowerCase().replace(/[^\wàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ\s]/g,'').split(/\s+/).forEach(w => { if (w.length > 2) freq[w] = (freq[w]||0)+1; });
+  const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  document.getElementById('wc-freq').innerHTML = top.map(([w,n]) => `<span class="freq-badge">${w} <strong>${n}</strong></span>`).join('');
+}
+
+// ────────────────────────────────────────────────────────
+// JSON
+// ────────────────────────────────────────────────────────
+function liveJson() {
+  const s = document.getElementById('json-in').value;
+  const el = document.getElementById('json-status');
+  if (!s.trim()) { el.innerHTML = ''; return; }
+  try { JSON.parse(s); el.innerHTML = '<span style="color:var(--accent)">✓ JSON hợp lệ</span>'; }
+  catch(e) { el.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`; }
+}
+function formatJson(indent) {
+  try { document.getElementById('json-out').value = JSON.stringify(JSON.parse(document.getElementById('json-in').value), null, indent); }
+  catch(e) { alert('JSON không hợp lệ: ' + e.message); }
+}
+function minifyJson() {
+  try { document.getElementById('json-out').value = JSON.stringify(JSON.parse(document.getElementById('json-in').value)); }
+  catch(e) { alert('JSON không hợp lệ: ' + e.message); }
+}
+function sortJsonKeys() {
+  try {
+    const sort = o => Array.isArray(o) ? o.map(sort) : (o && typeof o==='object') ? Object.fromEntries(Object.keys(o).sort().map(k=>[k,sort(o[k])])) : o;
+    document.getElementById('json-out').value = JSON.stringify(sort(JSON.parse(document.getElementById('json-in').value)), null, 2);
+  } catch(e) { alert('JSON không hợp lệ: ' + e.message); }
+}
+
+// ────────────────────────────────────────────────────────
+// REGEX
+// ────────────────────────────────────────────────────────
+function runRegex() {
+  const pat = document.getElementById('rx-pattern').value;
+  const flags = document.getElementById('rx-flags').value;
+  const text = document.getElementById('rx-text').value;
+  const statusEl = document.getElementById('rx-status');
+  const resultEl = document.getElementById('rx-result');
+  const matchesEl = document.getElementById('rx-matches');
+  if (!pat) { resultEl.textContent = text; statusEl.innerHTML = ''; matchesEl.innerHTML = ''; return; }
+  try {
+    const rx = new RegExp(pat, flags.includes('g') ? flags : flags + 'g');
+    const matches = [...text.matchAll(rx)];
+    statusEl.innerHTML = `<span style="color:var(--accent)">✓ ${matches.length} match${matches.length!==1?'es':''}</span>`;
+    const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const rx2 = new RegExp(pat, flags.includes('g') ? flags : flags + 'g');
+    resultEl.innerHTML = escaped.replace(rx2, m => `<mark class="rx-match">${m.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</mark>`);
+    matchesEl.innerHTML = matches.slice(0,20).map((m,i) =>
+      `<div><span style="color:var(--text-tertiary)">[${i+1}] ký tự ${m.index}–${m.index+m[0].length}:</span> <code style="background:var(--bg-secondary);padding:1px 5px;border-radius:3px;">${m[0].replace(/</g,'&lt;')}</code>${m.length>1?' <span style="color:var(--text-tertiary)">groups: '+m.slice(1).join(', ')+'</span>':''}</div>`
+    ).join('');
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
+    resultEl.textContent = text;
+  }
+}
+function doReplace() {
+  try {
+    const rx = new RegExp(document.getElementById('rx-pattern').value, document.getElementById('rx-flags').value);
+    document.getElementById('rx-replaced').value = document.getElementById('rx-text').value.replace(rx, document.getElementById('rx-replace').value);
+  } catch(e) { alert(e.message); }
+}
+
+// ────────────────────────────────────────────────────────
+// BASE64
+// ────────────────────────────────────────────────────────
+let b64Mode = 'text';
+function switchB64(mode, el) {
+  b64Mode = mode;
+  document.getElementById('b64-text-section').style.display = (mode==='text'||mode==='url') ? 'block' : 'none';
+  document.getElementById('b64-file-section').style.display = mode==='file' ? 'block' : 'none';
+  document.getElementById('b64-url-section').style.display = mode==='url' ? 'block' : 'none';
+  document.querySelectorAll('.tag').forEach(t => { if(t.onclick && t.onclick.toString().includes('switchB64')) t.classList.remove('active'); });
+  el.classList.add('active');
+}
+function autoB64() {
+  const s = document.getElementById('b64-in').value;
+  const isB64 = /^[A-Za-z0-9+/]+=*$/.test(s.trim()) && s.length % 4 === 0 && s.length > 0;
+  const hint = document.getElementById('b64-hint');
+  if (s.trim()) { hint.style.display='block'; hint.textContent = isB64 ? 'Trông như Base64 → nhấn Decode' : 'Trông như text → nhấn Encode'; }
+  else { hint.style.display='none'; }
+}
+function doB64(mode) {
+  if (b64Mode === 'url') {
+    const s = document.getElementById('url-in').value;
+    document.getElementById('b64-out').value = mode==='encode' ? encodeURIComponent(s) : decodeURIComponent(s);
+    return;
+  }
+  const s = document.getElementById('b64-in').value;
+  try {
+    document.getElementById('b64-out').value = mode==='encode'
+      ? btoa(unescape(encodeURIComponent(s)))
+      : decodeURIComponent(escape(atob(s.trim())));
+  } catch(e) { document.getElementById('b64-out').value = 'Lỗi: ' + e.message; }
+}
+function encodeFile(input) {
+  const f = input.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = e => { document.getElementById('b64-out').value = e.target.result.split(',')[1]; };
+  r.readAsDataURL(f);
+}
+function autoUrl() {
+  const s = document.getElementById('url-in').value;
+  document.getElementById('b64-out').value = '';
+}
+
+// ────────────────────────────────────────────────────────
+// COLOR
+// ────────────────────────────────────────────────────────
+function hexToRgb(hex) {
+  hex = hex.replace(/^#/,''); if (hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const n=parseInt(hex,16); return [n>>16&255,n>>8&255,n&255];
+}
+function rgbToHsl(r,g,b) {
+  r/=255;g/=255;b/=255; const max=Math.max(r,g,b),min=Math.min(r,g,b),l=(max+min)/2;
+  if(max===min) return [0,0,Math.round(l*100)];
+  const d=max-min,s=l>0.5?d/(2-max-min):d/(max+min);
+  let h=max===r?(g-b)/d+(g<b?6:0):max===g?(b-r)/d+2:(r-g)/d+4;
+  return [Math.round(h*60),Math.round(s*100),Math.round(l*100)];
+}
+function rgbToHsv(r,g,b) {
+  r/=255;g/=255;b/=255; const max=Math.max(r,g,b),d=max-Math.min(r,g,b),s=max?d/max:0;
+  let h=0; if(d){h=max===r?(g-b)/d%6:max===g?(b-r)/d+2:(r-g)/d+4; h=Math.round(h*60); if(h<0)h+=360;}
+  return [h,Math.round(s*100),Math.round(max*100)];
+}
+function rgbToCmyk(r,g,b) {
+  r/=255;g/=255;b/=255; const k=1-Math.max(r,g,b); if(k===1) return [0,0,0,100];
+  return [Math.round((1-r-k)/(1-k)*100),Math.round((1-g-k)/(1-k)*100),Math.round((1-b-k)/(1-k)*100),Math.round(k*100)];
+}
+function hslToRgb(h,s,l) {
+  s/=100;l/=100; const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;
+  let rv=0,gv=0,bv=0;
+  if(h<60){rv=c;gv=x;}else if(h<120){rv=x;gv=c;}else if(h<180){gv=c;bv=x;}else if(h<240){gv=x;bv=c;}else if(h<300){rv=x;bv=c;}else{rv=c;bv=x;}
+  return [Math.round((rv+m)*255),Math.round((gv+m)*255),Math.round((bv+m)*255)];
+}
+function updateColorUI(r,g,b) {
+  const hex=[r,g,b].map(x=>Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0')).join('');
+  document.getElementById('col-hex').value='#'+hex;
+  document.getElementById('col-picker').value='#'+hex;
+  document.getElementById('col-rgb').value=`${r}, ${g}, ${b}`;
+  const [h,s,l]=rgbToHsl(r,g,b); document.getElementById('col-hsl').value=`${h}°, ${s}%, ${l}%`;
+  const [hv,sv,v]=rgbToHsv(r,g,b); document.getElementById('col-hsv').textContent=`${hv}°, ${sv}%, ${v}%`;
+  const [c,m,y,k]=rgbToCmyk(r,g,b); document.getElementById('col-cmyk').textContent=`C:${c}% M:${m}% Y:${y}% K:${k}%`;
+  document.getElementById('col-css').textContent=`rgb(${r}, ${g}, ${b})  |  hsl(${h}, ${s}%, ${l}%)`;
+  const col='#'+hex;
+  document.getElementById('col-preview').style.background=col;
+  document.getElementById('col-preview-text').style.background=col;
+  document.getElementById('col-preview-text').style.color=l>55?'#111':'#fff';
+  const pal=document.getElementById('col-palette'); pal.innerHTML='';
+  [0.15,0.3,0.45,0.6,0.75,0.9,1,1.15,1.3,1.5].forEach(f=>{
+    const nr=Math.min(255,Math.round(r*f)),ng=Math.min(255,Math.round(g*f)),nb=Math.min(255,Math.round(b*f));
+    const sh='#'+[nr,ng,nb].map(x=>x.toString(16).padStart(2,'0')).join('');
+    const d=document.createElement('div'); d.className='palette-swatch'; d.style.background=sh; d.title=sh;
+    d.onclick=()=>{ document.getElementById('col-hex').value=sh; convertColor('hex'); };
+    pal.appendChild(d);
+  });
+}
+function convertColor(src) {
+  try {
+    let r,g,b;
+    if(src==='hex') {
+      let h=document.getElementById('col-hex').value.replace(/^#/,'');
+      if(h.length===3) h=h.split('').map(c=>c+c).join('');
+      if(!/^[0-9a-f]{6}$/i.test(h)) return;
+      [r,g,b]=hexToRgb(h);
+    } else if(src==='rgb') {
+      const parts=document.getElementById('col-rgb').value.split(',').map(x=>parseInt(x.trim()));
+      if(parts.length<3||parts.some(isNaN)) return;
+      [r,g,b]=parts;
+    } else if(src==='hsl') {
+      const parts=document.getElementById('col-hsl').value.replace(/[°%]/g,'').split(',').map(x=>parseFloat(x.trim()));
+      if(parts.length<3||parts.some(isNaN)) return;
+      [r,g,b]=hslToRgb(...parts);
+    }
+    updateColorUI(r,g,b);
+  } catch(e) {}
+}
+function syncPicker() { document.getElementById('col-hex').value=document.getElementById('col-picker').value; convertColor('hex'); }
+convertColor('hex');
+
+// ────────────────────────────────────────────────────────
+// PDF
+// ────────────────────────────────────────────────────────
+const {PDFDocument, degrees} = PDFLib;
+let mergeFiles = [];
+
+function switchPdf(mode, el) {
+  ['merge','split','delete','rotate','resize'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
+  document.getElementById('pdf-'+mode).style.display='block';
+  document.querySelectorAll('#tab-pdf .tag').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+function addMergeFiles(input) {
+  Array.from(input.files).forEach(f => {
+    mergeFiles.push(f);
+    const item=document.createElement('div'); item.className='file-item';
+    item.innerHTML=`<span class="file-item-icon">📄</span><span class="file-item-name">${f.name}</span><span class="file-item-size">${(f.size/1024).toFixed(0)} KB</span><button class="file-item-remove" onclick="removeMergeFile(this,'${f.name}')">×</button>`;
+    document.getElementById('merge-list').appendChild(item);
+  });
+  input.value='';
+}
+function removeMergeFile(btn, name) { mergeFiles=mergeFiles.filter(f=>f.name!==name); btn.closest('.file-item').remove(); }
+function clearMergeList() { mergeFiles=[]; document.getElementById('merge-list').innerHTML=''; }
+function loadSinglePdf(input, prefix) {
+  const f=input.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try {
+      const doc=await PDFDocument.load(new Uint8Array(e.target.result));
+      const n=doc.getPageCount();
+      const infoEl=document.getElementById(prefix+'-info');
+      infoEl.style.display='flex'; infoEl.style.flexDirection='column'; infoEl.style.gap='12px';
+      document.getElementById(prefix+'-info-text').textContent=`📄 ${f.name} — ${n} trang, ${(f.size/1024).toFixed(0)} KB`;
+      infoEl._doc=doc; infoEl._file=f;
+    } catch(e) { alert('Không đọc được PDF: '+e.message); }
+  };
+  reader.readAsArrayBuffer(f);
+}
+function parsePageList(str, total) {
+  if (!str.trim()) return Array.from({length:total},(_,i)=>i);
+  const s=new Set();
+  str.split(',').forEach(p=>{
+    p=p.trim();
+    if(p.includes('-')){ const [a,b]=p.split('-').map(x=>parseInt(x)-1); for(let i=a;i<=Math.min(b,total-1);i++) s.add(i); }
+    else { const n=parseInt(p)-1; if(n>=0&&n<total) s.add(n); }
+  });
+  return [...s].sort((a,b)=>a-b);
+}
+const pageSizes={a4p:[595.28,841.89],a4l:[841.89,595.28],a3p:[841.89,1190.55],letter:[612,792]};
+async function processPdf(mode) {
+  try {
+    if(mode==='merge') {
+      if(mergeFiles.length<2){alert('Thêm ít nhất 2 file PDF');return;}
+      const merged=await PDFDocument.create();
+      const rMode=document.getElementById('merge-resize').value;
+      let targetW,targetH,firstW,firstH;
+      for(let i=0;i<mergeFiles.length;i++){
+        const ab=await mergeFiles[i].arrayBuffer();
+        const doc=await PDFDocument.load(new Uint8Array(ab));
+        if(i===0&&rMode==='fit'){const p=doc.getPages()[0];firstW=p.getWidth();firstH=p.getHeight();}
+        const pages=await merged.copyPages(doc,doc.getPageIndices());
+        pages.forEach(p=>{
+          if(rMode!=='none'){
+            const [tw,th]=rMode==='fit'?[firstW,firstH]:pageSizes[rMode];
+            p.setSize(tw,th);
+          }
+          merged.addPage(p);
+        });
+      }
+      download(await merged.save(),'merged.pdf');
+    } else if(mode==='split') {
+      const infoEl=document.getElementById('split-info');
+      if(!infoEl._doc){alert('Chưa chọn file');return;}
+      const doc=infoEl._doc, total=doc.getPageCount();
+      const sel=parsePageList(document.getElementById('split-pages').value,total);
+      const modeV=document.getElementById('split-mode').value;
+      if(modeV==='each') {
+        for(const pi of sel){ const out=await PDFDocument.create(); const [p]=await out.copyPages(doc,[pi]); out.addPage(p); download(await out.save(),`page_${pi+1}.pdf`); }
+      } else {
+        const out=await PDFDocument.create(); const pages=await out.copyPages(doc,sel); pages.forEach(p=>out.addPage(p)); download(await out.save(),'extracted.pdf');
+      }
+    } else if(mode==='delete') {
+      const infoEl=document.getElementById('del-info');
+      if(!infoEl._doc){alert('Chưa chọn file');return;}
+      const doc=infoEl._doc, total=doc.getPageCount();
+      const delSet=new Set(parsePageList(document.getElementById('del-pages').value,total));
+      const keep=[...Array(total).keys()].filter(i=>!delSet.has(i));
+      if(!keep.length){alert('Không thể xóa tất cả các trang');return;}
+      const out=await PDFDocument.create(); const pages=await out.copyPages(doc,keep); pages.forEach(p=>out.addPage(p)); download(await out.save(),'edited.pdf');
+    } else if(mode==='rotate') {
+      const infoEl=document.getElementById('rot-info');
+      if(!infoEl._doc){alert('Chưa chọn file');return;}
+      const doc=infoEl._doc, total=doc.getPageCount();
+      const angle=parseInt(document.getElementById('rot-angle').value);
+      const rotStr=document.getElementById('rot-pages').value;
+      const rotSet=rotStr.trim() ? new Set(parsePageList(rotStr,total)) : new Set([...Array(total).keys()]);
+      const out=await PDFDocument.create();
+      const all=await out.copyPages(doc,[...Array(total).keys()]);
+      all.forEach((p,i)=>{ if(rotSet.has(i)) p.setRotation(degrees(angle)); out.addPage(p); });
+      download(await out.save(),'rotated.pdf');
+    } else if(mode==='resize') {
+      const infoEl=document.getElementById('cmp-info');
+      if(!infoEl._doc){alert('Chưa chọn file');return;}
+      const doc=infoEl._doc, total=doc.getPageCount();
+      const [tw,th]=pageSizes[document.getElementById('cmp-size').value];
+      const out=await PDFDocument.create();
+      const pages=await out.copyPages(doc,[...Array(total).keys()]);
+      pages.forEach(p=>{ p.setSize(tw,th); out.addPage(p); });
+      download(await out.save(),'resized.pdf');
+    }
+  } catch(e) { alert('Lỗi xử lý PDF: '+e.message); }
+}
+function download(bytes, name) {
+  const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+  const a=document.createElement('a'); a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+</script>
+</body>
+</html>
