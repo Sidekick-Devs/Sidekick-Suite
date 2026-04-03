@@ -423,44 +423,89 @@
     <div class="tool-pane active" id="tab-text">
       <div class="tool-header">
         <div class="tool-title">Text Cleaner</div>
-        <div class="tool-desc">Xóa, chuẩn hóa, làm sạch văn bản hàng loạt</div>
+        <div class="tool-desc">Bỏ format, chuẩn hóa văn bản khi copy-paste</div>
       </div>
+
+      <!-- QUICK CLEAN BUTTON -->
+      <div style="background:var(--accent-light); border:1px solid rgba(29,158,117,0.25); border-radius:var(--radius-lg); padding:16px 18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:180px;">
+          <div style="font-size:13px; font-weight:600; color:var(--accent-text);">Quick Clean</div>
+          <div style="font-size:12px; color:var(--accent-text); opacity:0.8; margin-top:2px;">Strip HTML · decode entities · chuẩn quotes · chuẩn khoảng trắng · tự copy clipboard</div>
+        </div>
+        <button id="quick-clean-btn" onclick="quickClean()" style="background:var(--accent); color:white; border:none; padding:10px 22px; font-size:13px; font-weight:600; border-radius:var(--radius); cursor:pointer; flex-shrink:0; transition:opacity 0.15s;">
+          Clean &amp; Copy
+        </button>
+      </div>
+
       <div>
         <label class="field-label">Văn bản đầu vào</label>
         <textarea id="txt-in" placeholder="Dán văn bản cần làm sạch vào đây..." oninput="previewText()"></textarea>
       </div>
+
+      <div style="font-size:11px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:-6px;">Khoảng trắng &amp; dòng</div>
       <div class="check-grid">
-        <label class="check-item"><input type="checkbox" id="ck-trim" checked onchange="previewText()"> Trim khoảng trắng</label>
+        <label class="check-item"><input type="checkbox" id="ck-trim" checked onchange="previewText()"> Trim đầu/cuối dòng</label>
         <label class="check-item"><input type="checkbox" id="ck-spaces" checked onchange="previewText()"> Chuẩn khoảng trắng</label>
+        <label class="check-item"><input type="checkbox" id="ck-nbsp" checked onchange="previewText()"> Bỏ &amp;nbsp; / tab</label>
         <label class="check-item"><input type="checkbox" id="ck-lines" onchange="previewText()"> Xóa dòng trống</label>
+        <label class="check-item"><input type="checkbox" id="ck-dup" onchange="previewText()"> Bỏ dòng trùng</label>
+        <label class="check-item"><input type="checkbox" id="ck-newline" onchange="previewText()"> Gộp thành 1 dòng</label>
+      </div>
+
+      <div style="font-size:11px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:-6px;">Ký tự &amp; format</div>
+      <div class="check-grid">
+        <label class="check-item"><input type="checkbox" id="ck-html" checked onchange="previewText()"> Strip HTML tags</label>
+        <label class="check-item"><input type="checkbox" id="ck-entities" checked onchange="previewText()"> Decode HTML entities</label>
+        <label class="check-item"><input type="checkbox" id="ck-quotes" checked onchange="previewText()"> Chuẩn hóa dấu ngoặc</label>
+        <label class="check-item"><input type="checkbox" id="ck-unicode-letters" onchange="previewText()"> Bỏ bold/italic Unicode</label>
+        <label class="check-item"><input type="checkbox" id="ck-punct" onchange="previewText()"> Chuẩn dấu câu</label>
+        <label class="check-item"><input type="checkbox" id="ck-accents" onchange="previewText()"> Bỏ dấu (café→cafe)</label>
+        <label class="check-item"><input type="checkbox" id="ck-emoji" onchange="previewText()"> Bỏ emoji</label>
+        <label class="check-item"><input type="checkbox" id="ck-url" onchange="previewText()"> Bỏ URL</label>
         <label class="check-item"><input type="checkbox" id="ck-special" onchange="previewText()"> Bỏ ký tự đặc biệt</label>
-        <label class="check-item"><input type="checkbox" id="ck-html" onchange="previewText()"> Strip HTML tags</label>
+        <label class="check-item"><input type="checkbox" id="ck-num" onchange="previewText()"> Bỏ số</label>
         <label class="check-item"><input type="checkbox" id="ck-lower" onchange="previewText()"> lowercase</label>
         <label class="check-item"><input type="checkbox" id="ck-upper" onchange="previewText()"> UPPERCASE</label>
-        <label class="check-item"><input type="checkbox" id="ck-url" onchange="previewText()"> Bỏ URL</label>
-        <label class="check-item"><input type="checkbox" id="ck-emoji" onchange="previewText()"> Bỏ emoji</label>
-        <label class="check-item"><input type="checkbox" id="ck-punct" onchange="previewText()"> Chuẩn dấu câu</label>
-        <label class="check-item"><input type="checkbox" id="ck-num" onchange="previewText()"> Bỏ số</label>
-        <label class="check-item"><input type="checkbox" id="ck-dup" onchange="previewText()"> Bỏ dòng trùng</label>
       </div>
-      <div class="grid-2">
-        <div>
-          <label class="field-label">Find</label>
-          <input type="text" id="txt-find" placeholder="Chuỗi cần tìm..." oninput="previewText()">
-        </div>
-        <div>
-          <label class="field-label">Replace với</label>
-          <input type="text" id="txt-replace" placeholder="Thay bằng..." oninput="previewText()">
-        </div>
-      </div>
+
+      <!-- FIND & REPLACE MULTI -->
       <div>
-        <label class="field-label">Kết quả (preview realtime)</label>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <label class="field-label" style="margin:0;">Find &amp; Replace (nhiều cặp)</label>
+          <button class="btn" onclick="addFindRow()" style="font-size:11px; padding:4px 10px;">+ Thêm dòng</button>
+        </div>
+        <div id="find-replace-list" style="display:flex; flex-direction:column; gap:6px;">
+          <div class="fr-row" style="display:grid; grid-template-columns:1fr 1fr auto; gap:6px; align-items:center;">
+            <input type="text" placeholder="Tìm..." oninput="previewText()" class="fr-find">
+            <input type="text" placeholder="Thay bằng..." oninput="previewText()" class="fr-replace">
+            <button class="btn" onclick="removeFindRow(this)" style="padding:6px 10px; color:var(--text-tertiary);">×</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUMN TO LIST -->
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <label class="field-label" style="margin:0; flex-shrink:0; white-space:nowrap;">Column → List:</label>
+          <select id="col-delimiter" onchange="previewText()" style="width:auto; font-size:12px; padding:5px 8px;">
+            <option value="">Tắt</option>
+            <option value=",">, (comma)</option>
+            <option value="; ">; (semicolon)</option>
+            <option value=" | ">| (pipe)</option>
+          </select>
+          <label class="check-item" style="font-size:12px; padding:5px 10px;"><input type="checkbox" id="ck-col-quote" onchange="previewText()"> Bọc ngoặc kép</label>
+          <label class="check-item" style="font-size:12px; padding:5px 10px;"><input type="checkbox" id="ck-col-dedup" onchange="previewText()"> Bỏ trùng</label>
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label">Kết quả</label>
         <textarea id="txt-out" class="output-area" readonly></textarea>
       </div>
       <div class="btn-row">
         <button class="btn primary" onclick="applyText()">Áp dụng → Input</button>
-        <button class="btn success" onclick="copyText('txt-out')">📋 Sao chép</button>
-        <button class="btn" onclick="swapText()">⇅ Hoán đổi</button>
+        <button class="btn success" onclick="copyText('txt-out')">Sao chép</button>
+        <button class="btn" onclick="swapText()">Hoán đổi</button>
         <button class="btn danger" onclick="clearAll('txt-in','txt-out')">Xóa</button>
       </div>
     </div>
@@ -845,26 +890,161 @@ function switchTab(name, el) {
 // ────────────────────────────────────────────────────────
 // TEXT CLEANER
 // ────────────────────────────────────────────────────────
+
+// Unicode bold/italic → normal map
+const unicodeNormalMap = (function() {
+  const ranges = [
+    [0x1D400, 0x1D419, 'A'], [0x1D41A, 0x1D433, 'a'],
+    [0x1D434, 0x1D44D, 'A'], [0x1D44E, 0x1D467, 'a'],
+    [0x1D468, 0x1D481, 'A'], [0x1D482, 0x1D49B, 'a'],
+    [0x1D49C, 0x1D4B5, 'A'], [0x1D4B6, 0x1D4CF, 'a'],
+    [0x1D4D0, 0x1D4E9, 'A'], [0x1D4EA, 0x1D503, 'a'],
+    [0x1D504, 0x1D51D, 'A'], [0x1D51E, 0x1D537, 'a'],
+    [0x1D538, 0x1D551, 'A'], [0x1D552, 0x1D56B, 'a'],
+    [0x1D56C, 0x1D585, 'A'], [0x1D586, 0x1D59F, 'a'],
+    [0x1D5A0, 0x1D5B9, 'A'], [0x1D5BA, 0x1D5D3, 'a'],
+    [0x1D5D4, 0x1D5ED, 'A'], [0x1D5EE, 0x1D607, 'a'],
+    [0x1D608, 0x1D621, 'A'], [0x1D622, 0x1D63B, 'a'],
+    [0x1D63C, 0x1D655, 'A'], [0x1D656, 0x1D66F, 'a'],
+    [0x1D670, 0x1D689, 'A'], [0x1D68A, 0x1D6A3, 'a'],
+    [0x1D7CE, 0x1D7D7, '0'], [0x1D7D8, 0x1D7E1, '0'],
+    [0x1D7E2, 0x1D7EB, '0'], [0x1D7EC, 0x1D7F5, '0'],
+    [0x1D7F6, 0x1D7FF, '0'],
+  ];
+  const map = {};
+  ranges.forEach(([start, end, base]) => {
+    const baseCode = base.charCodeAt(0);
+    for (let i = start; i <= end; i++) {
+      map[String.fromCodePoint(i)] = String.fromCharCode(baseCode + (i - start));
+    }
+  });
+  return map;
+})();
+
+function ck(id) { const el = document.getElementById(id); return el && el.checked; }
+
+function cleanText(s) {
+  // Strip HTML tags first
+  if (ck('ck-html')) s = s.replace(/<[^>]*>/g, '');
+
+  // Decode HTML entities
+  if (ck('ck-entities')) {
+    s = s.replace(/&amp;/gi, '&')
+         .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+         .replace(/&quot;/gi, '"').replace(/&#39;/gi, "'")
+         .replace(/&nbsp;/gi, ' ').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+         .replace(/&[a-z]+;/gi, '');
+  }
+
+  // &nbsp; và tab
+  if (ck('ck-nbsp')) s = s.replace(/\u00A0/g, ' ').replace(/\t/g, ' ');
+
+  // Chuẩn hóa quotes: curly → straight
+  if (ck('ck-quotes')) {
+    s = s.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
+         .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+         .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, '-')
+         .replace(/\u2026/g, '...')
+         .replace(/\u00AB|\u00BB/g, '"');
+  }
+
+  // Bold/italic Unicode letters → plain
+  if (ck('ck-unicode-letters')) {
+    s = [...s].map(ch => unicodeNormalMap[ch] || ch).join('');
+  }
+
+  // Remove URL
+  if (ck('ck-url')) s = s.replace(/https?:\/\/[^\s]+/g, '');
+
+  // Remove emoji
+  if (ck('ck-emoji')) s = s.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\u200D/g, '');
+
+  // Remove accents (Latin only, keeps Vietnamese)
+  if (ck('ck-accents')) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC');
+
+  // Remove special chars
+  if (ck('ck-special')) s = s.replace(/[^\w\s\u00C0-\u024F\u1E00-\u1EFF.,!?;:()\-]/g, '');
+
+  // Remove numbers
+  if (ck('ck-num')) s = s.replace(/\d+/g, '');
+
+  // Normalize spaces
+  if (ck('ck-spaces')) s = s.replace(/[ \t]+/g, ' ');
+
+  // Normalize punctuation spacing
+  if (ck('ck-punct')) {
+    s = s.replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])(?=[^\s\d])/g, '$1 ');
+  }
+
+  // Trim each line
+  if (ck('ck-trim')) s = s.split('\n').map(l => l.trim()).join('\n').trim();
+
+  // Remove empty lines
+  if (ck('ck-lines')) s = s.replace(/\n{2,}/g, '\n');
+
+  // Remove duplicate lines
+  if (ck('ck-dup')) s = [...new Set(s.split('\n'))].join('\n');
+
+  // Join into single line
+  if (ck('ck-newline')) s = s.replace(/\n+/g, ' ').trim();
+
+  // Multi find & replace
+  document.querySelectorAll('#find-replace-list .fr-row').forEach(row => {
+    const find = row.querySelector('.fr-find').value;
+    const replace = row.querySelector('.fr-replace').value;
+    if (find) s = s.split(find).join(replace);
+  });
+
+  // Column to list
+  const delim = document.getElementById('col-delimiter').value;
+  if (delim) {
+    let lines = s.split('\n').map(l => l.trim()).filter(l => l);
+    if (ck('ck-col-dedup')) lines = [...new Set(lines)];
+    if (ck('ck-col-quote')) lines = lines.map(l => '"' + l + '"');
+    s = lines.join(delim);
+  }
+
+  // Case
+  if (ck('ck-lower')) s = s.toLowerCase();
+  if (ck('ck-upper')) s = s.toUpperCase();
+
+  return s;
+}
+
 function previewText() {
   document.getElementById('txt-out').value = cleanText(document.getElementById('txt-in').value);
 }
-function cleanText(s) {
-  if (document.getElementById('ck-html').checked) s = s.replace(/<[^>]*>/g, '');
-  if (document.getElementById('ck-url').checked) s = s.replace(/https?:\/\/\S+/g, '');
-  if (document.getElementById('ck-emoji').checked) s = s.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]/g, '');
-  if (document.getElementById('ck-special').checked) s = s.replace(/[^\w\s\u00C0-\u024F\u1E00-\u1EFF.,!?;:()\-]/g, '');
-  if (document.getElementById('ck-num').checked) s = s.replace(/\d+/g, '');
-  if (document.getElementById('ck-spaces').checked) s = s.replace(/[ \t]+/g, ' ');
-  if (document.getElementById('ck-lines').checked) s = s.replace(/\n{2,}/g, '\n');
-  if (document.getElementById('ck-trim').checked) s = s.split('\n').map(l => l.trim()).join('\n').trim();
-  if (document.getElementById('ck-punct').checked) s = s.replace(/\s+([.,!?;:])/g, '$1').replace(/([.,!?;:])(?=[^\s])/g, '$1 ');
-  if (document.getElementById('ck-dup').checked) s = [...new Set(s.split('\n'))].join('\n');
-  const find = document.getElementById('txt-find').value;
-  if (find) s = s.replaceAll(find, document.getElementById('txt-replace').value);
-  if (document.getElementById('ck-lower').checked) s = s.toLowerCase();
-  if (document.getElementById('ck-upper').checked) s = s.toUpperCase();
-  return s;
+
+function quickClean() {
+  const s = document.getElementById('txt-in').value;
+  if (!s.trim()) return;
+  // Quick clean preset: strip HTML, decode entities, chuẩn quotes, nbsp, spaces, trim
+  let r = s;
+  r = r.replace(/<[^>]*>/g, '');
+  r = r.replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/&quot;/gi,'"').replace(/&#39;/gi,"'").replace(/&nbsp;/gi,' ').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(n)).replace(/&[a-z]+;/gi,'');
+  r = r.replace(/\u00A0/g,' ').replace(/\t/g,' ');
+  r = r.replace(/[\u2018\u2019\u201A\u201B]/g,"'").replace(/[\u201C\u201D\u201E\u201F]/g,'"').replace(/[\u2010-\u2015]/g,'-').replace(/\u2026/g,'...');
+  r = [...r].map(ch => unicodeNormalMap[ch] || ch).join('');
+  r = r.replace(/[ \t]+/g,' ');
+  r = r.split('\n').map(l=>l.trim()).join('\n').trim();
+  document.getElementById('txt-out').value = r;
+  const btn = document.getElementById('quick-clean-btn');
+  navigator.clipboard.writeText(r).then(() => {
+    btn.textContent = 'Copied!';
+    btn.style.background = '#059669';
+    setTimeout(() => { btn.textContent = 'Clean & Copy'; btn.style.background = 'var(--accent)'; }, 1800);
+  }).catch(() => { btn.textContent = 'Done (copy thủ công)'; setTimeout(() => btn.textContent = 'Clean & Copy', 2000); });
 }
+
+function addFindRow() {
+  const row = document.createElement('div');
+  row.className = 'fr-row';
+  row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr auto; gap:6px; align-items:center;';
+  row.innerHTML = '<input type="text" placeholder="Tìm..." oninput="previewText()" class="fr-find"><input type="text" placeholder="Thay bằng..." oninput="previewText()" class="fr-replace"><button class="btn" onclick="removeFindRow(this)" style="padding:6px 10px; color:var(--text-tertiary);">×</button>';
+  document.getElementById('find-replace-list').appendChild(row);
+}
+function removeFindRow(btn) { btn.closest('.fr-row').remove(); previewText(); }
+
 function applyText() { document.getElementById('txt-in').value = document.getElementById('txt-out').value; previewText(); }
 function swapText() {
   const a = document.getElementById('txt-in').value;
@@ -873,11 +1053,11 @@ function swapText() {
 }
 function copyText(id) {
   const el = document.getElementById(id);
-  navigator.clipboard.writeText(el.value).then(() => showCopied(id)).catch(() => {});
-}
-function showCopied(id) {
-  const btn = event && event.target;
-  if (btn) { const orig = btn.textContent; btn.textContent = '✓ Đã copy!'; setTimeout(() => btn.textContent = orig, 1500); }
+  const val = el.value || el.textContent;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = event && event.target;
+    if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = orig, 1500); }
+  }).catch(() => {});
 }
 function clearAll(a, b) { document.getElementById(a).value = ''; if(b) document.getElementById(b).value = ''; }
 
