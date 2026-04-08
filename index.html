@@ -741,6 +741,7 @@
         <span class="tag" onclick="switchPdf('delete',this)">Xóa trang</span>
         <span class="tag" onclick="switchPdf('rotate',this)">Xoay trang</span>
         <span class="tag" onclick="switchPdf('resize',this)">Resize trang</span>
+        <span class="tag" onclick="switchPdf('compress',this)">Nén PDF</span>
       </div>
 
       <!-- MERGE -->
@@ -862,7 +863,53 @@
         </div>
       </div>
 
-      <div class="alert alert-info" style="font-size:12px;">🔒 File PDF không được upload lên server. Toàn bộ xử lý diễn ra trên trình duyệt của bạn.</div>
+      <!-- COMPRESS -->
+      <div id="pdf-compress" style="display:none; flex-direction:column; gap:14px;">
+
+        <!-- API URL config -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="text" id="gs-api-url" placeholder="https://sidekick-backend.onrender.com" style="flex:1; font-size:12px; font-family:monospace;" oninput="saveApiUrl()">
+          <button class="btn" onclick="checkGsApi()" id="gs-check-btn" style="flex-shrink:0; font-size:12px;">Kiểm tra</button>
+          <span id="gs-status" style="font-size:12px;"></span>
+        </div>
+
+        <div class="drop-zone" onclick="document.getElementById('pdf-comp-file').click()">
+          <div class="drop-icon">🗜️</div>Chọn file PDF cần nén
+        </div>
+        <input type="file" id="pdf-comp-file" accept=".pdf" style="display:none" onchange="loadCompFile(this)">
+
+        <div id="comp-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="comp-info-text"></div>
+
+          <div class="grid-2">
+            <div>
+              <label class="field-label">Mức nén (Ghostscript)</label>
+              <select id="comp-quality">
+                <option value="screen">Screen — nhỏ nhất, 72 dpi (gửi web)</option>
+                <option value="ebook" selected>Ebook — cân bằng, 150 dpi (gửi email)</option>
+                <option value="printer">Printer — chất lượng cao, 300 dpi</option>
+                <option value="prepress">Prepress — in ấn chuyên nghiệp</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+              <label class="check-item" style="width:100%;"><input type="checkbox" id="comp-grayscale"> Chuyển sang grayscale</label>
+            </div>
+          </div>
+
+          <div id="comp-result" style="display:none;"></div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn success" onclick="compressPdfGs()" id="comp-btn">🗜️ Nén với Ghostscript</button>
+          <button class="btn" onclick="compressPdfLocal()" style="font-size:12px;">Nén client-side (backup)</button>
+        </div>
+
+        <div class="alert alert-info" style="font-size:12px; line-height:1.6;">
+          Cần deploy <strong>sidekick-backend</strong> lên Render.com và điền URL API ở trên. Xem README trong repo backend để hướng dẫn.
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="font-size:12px;">🔒 File gốc không được lưu trên server sau khi xử lý xong.</div>
     </div>
 
     <!-- ===== UTM BUILDER ===== -->
@@ -1415,7 +1462,7 @@ const {PDFDocument, degrees} = PDFLib;
 let mergeFiles = [];
 
 function switchPdf(mode, el) {
-  ['merge','split','delete','rotate','resize'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
+  ['merge','split','delete','rotate','resize','compress'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
   document.getElementById('pdf-'+mode).style.display='block';
   document.querySelectorAll('#tab-pdf .tag').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
@@ -1524,6 +1571,134 @@ function download(bytes, name) {
   const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
   const a=document.createElement('a'); a.href=url; a.download=name; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+// ────────────────────────────────────────────────────────
+// PDF COMPRESS (Ghostscript API + local fallback)
+// ────────────────────────────────────────────────────────
+let compFile = null;
+
+// Lưu/load API URL từ localStorage
+(function initApiUrl() {
+  const saved = localStorage.getItem('gs-api-url');
+  if (saved) {
+    const el = document.getElementById('gs-api-url');
+    if (el) el.value = saved;
+  }
+})();
+
+function saveApiUrl() {
+  const url = document.getElementById('gs-api-url').value.trim();
+  localStorage.setItem('gs-api-url', url);
+}
+
+function getApiBase() {
+  return (document.getElementById('gs-api-url').value || '').trim().replace(/\/$/, '');
+}
+
+async function checkGsApi() {
+  const base = getApiBase();
+  const btn = document.getElementById('gs-check-btn');
+  const status = document.getElementById('gs-status');
+  if (!base) { status.textContent = 'Nhập URL trước'; return; }
+  btn.textContent = '...'; status.textContent = '';
+  try {
+    const res = await fetch(base + '/health', { signal: AbortSignal.timeout(8000) });
+    const data = await res.json();
+    if (data.gs) {
+      status.innerHTML = '<span style="color:var(--accent)">✓ Online · GS sẵn sàng</span>';
+    } else {
+      status.innerHTML = '<span style="color:var(--danger)">✗ Server online nhưng Ghostscript chưa cài</span>';
+    }
+  } catch(e) {
+    status.innerHTML = '<span style="color:var(--danger)">✗ Không kết nối được</span>';
+  } finally { btn.textContent = 'Kiểm tra'; }
+}
+
+function loadCompFile(input) {
+  const f = input.files[0]; if (!f) return;
+  compFile = f;
+  const infoEl = document.getElementById('comp-info');
+  infoEl.style.display = 'flex';
+  infoEl.style.flexDirection = 'column';
+  infoEl.style.gap = '12px';
+  document.getElementById('comp-info-text').textContent =
+    `📄 ${f.name} — ${(f.size / 1024).toFixed(0)} KB`;
+  document.getElementById('comp-result').style.display = 'none';
+}
+
+function showCompResult(origSize, newSize, method) {
+  const el = document.getElementById('comp-result');
+  el.style.display = 'block';
+  if (newSize < origSize) {
+    const pct = ((1 - newSize / origSize) * 100).toFixed(1);
+    el.className = 'alert alert-success';
+    el.innerHTML = `<strong>${method}:</strong> ${(origSize/1024).toFixed(0)} KB → <strong>${(newSize/1024).toFixed(0)} KB</strong> (giảm <strong>${pct}%</strong>)`;
+  } else {
+    el.className = 'alert alert-info';
+    el.innerHTML = `Kích thước không giảm thêm được (${(newSize/1024).toFixed(0)} KB). PDF này đã được nén tối đa.`;
+  }
+}
+
+async function compressPdfGs() {
+  if (!compFile) { alert('Chưa chọn file'); return; }
+  const base = getApiBase();
+  if (!base) { alert('Nhập URL API backend trước'); return; }
+
+  const btn = document.getElementById('comp-btn');
+  btn.textContent = 'Đang nén...'; btn.disabled = true;
+
+  try {
+    const form = new FormData();
+    form.append('file', compFile);
+    form.append('quality', document.getElementById('comp-quality').value);
+    form.append('grayscale', document.getElementById('comp-grayscale').checked);
+
+    const res = await fetch(base + '/compress', {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(120000),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || res.statusText);
+    }
+
+    const blob = await res.blob();
+    const origSize = compFile.size;
+    const newSize = parseInt(res.headers.get('X-Compressed-Size') || blob.size);
+
+    // Tải file về
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = compFile.name.replace('.pdf', '_compressed.pdf');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+    showCompResult(origSize, newSize || blob.size, 'Ghostscript');
+
+  } catch(e) {
+    alert('Lỗi: ' + e.message + '\n\nThử dùng nút "Nén client-side" làm backup.');
+  } finally {
+    btn.textContent = '🗜️ Nén với Ghostscript'; btn.disabled = false;
+  }
+}
+
+async function compressPdfLocal() {
+  if (!compFile) { alert('Chưa chọn file'); return; }
+  const origSize = compFile.size;
+  const ab = await compFile.arrayBuffer();
+  const pdfDoc = await PDFLib.PDFDocument.load(new Uint8Array(ab));
+  pdfDoc.setTitle(''); pdfDoc.setAuthor(''); pdfDoc.setSubject('');
+  pdfDoc.setKeywords([]); pdfDoc.setProducer(''); pdfDoc.setCreator('');
+  pdfDoc.getPages().forEach(page => {
+    try { page.node.delete(PDFLib.PDFName.of('Annots')); } catch(e) {}
+  });
+  const bytes = await pdfDoc.save({ useObjectStreams: true });
+  download(bytes, compFile.name.replace('.pdf', '_compressed.pdf'));
+  showCompResult(origSize, bytes.length, 'Client-side');
 }
 
 // ────────────────────────────────────────────────────────
