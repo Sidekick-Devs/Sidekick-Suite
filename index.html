@@ -1646,19 +1646,41 @@ async function compressPdfGs() {
   if (!base) { alert('Nhập URL API backend trước'); return; }
 
   const btn = document.getElementById('comp-btn');
-  btn.textContent = 'Đang nén...'; btn.disabled = true;
+  const resultEl = document.getElementById('comp-result');
+  btn.disabled = true;
+  resultEl.style.display = 'none';
+
+  // Progress timer — cho user thấy đang chạy
+  let secs = 0;
+  const fileMB = (compFile.size / 1024 / 1024).toFixed(1);
+  const timer = setInterval(() => {
+    secs++;
+    const msg = secs < 15
+      ? `Đang nén... ${secs}s`
+      : secs < 35
+      ? `Ghostscript đang xử lý... ${secs}s (file ${fileMB}MB)`
+      : `Vẫn đang chạy... ${secs}s — free tier hơi chậm, chờ tí nhé`;
+    btn.textContent = msg;
+  }, 1000);
 
   try {
+    // Nếu server vừa ngủ dậy, ping trước để wake up
+    fetch(base + '/health').catch(() => {});
+
     const form = new FormData();
     form.append('file', compFile);
     form.append('quality', document.getElementById('comp-quality').value);
     form.append('grayscale', document.getElementById('comp-grayscale').checked);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 phút
+
     const res = await fetch(base + '/compress', {
       method: 'POST',
       body: form,
-      signal: AbortSignal.timeout(120000),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -1667,9 +1689,8 @@ async function compressPdfGs() {
 
     const blob = await res.blob();
     const origSize = compFile.size;
-    const newSize = parseInt(res.headers.get('X-Compressed-Size') || blob.size);
+    const newSize = parseInt(res.headers.get('X-Compressed-Size')) || blob.size;
 
-    // Tải file về
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1677,12 +1698,19 @@ async function compressPdfGs() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 
-    showCompResult(origSize, newSize || blob.size, 'Ghostscript');
+    showCompResult(origSize, newSize, 'Ghostscript');
 
   } catch(e) {
-    alert('Lỗi: ' + e.message + '\n\nThử dùng nút "Nén client-side" làm backup.');
+    const isTimeout = e.name === 'AbortError';
+    resultEl.style.display = 'block';
+    resultEl.className = 'alert alert-danger';
+    resultEl.innerHTML = isTimeout
+      ? `Timeout sau ${secs}s — file quá lớn cho free tier. Thử mức nén <strong>screen</strong> hoặc dùng nút <strong>Nén client-side</strong>.`
+      : `Lỗi: ${e.message}`;
   } finally {
-    btn.textContent = '🗜️ Nén với Ghostscript'; btn.disabled = false;
+    clearInterval(timer);
+    btn.textContent = '🗜️ Nén với Ghostscript';
+    btn.disabled = false;
   }
 }
 
