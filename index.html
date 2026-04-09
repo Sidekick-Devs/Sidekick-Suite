@@ -1657,36 +1657,47 @@ async function compressPdfGs() {
   btn.disabled = true;
   resultEl.style.display = 'none';
 
-  // Progress timer — cho user thấy đang chạy
   let secs = 0;
   const fileMB = (compFile.size / 1024 / 1024).toFixed(1);
+  const steps = ['Bước 1/3: Lấy upload URL...', `Bước 2/3: Uploading ${fileMB}MB lên GCS...`, 'Bước 3/3: Ghostscript đang nén...'];
+  let currentStep = steps[0];
   const timer = setInterval(() => {
     secs++;
-    const msg = secs < 15
-      ? `Đang nén... ${secs}s`
-      : secs < 35
-      ? `Ghostscript đang xử lý... ${secs}s (file ${fileMB}MB)`
-      : `Vẫn đang chạy... ${secs}s — free tier hơi chậm, chờ tí nhé`;
-    btn.textContent = msg;
+    btn.textContent = `${currentStep} ${secs}s`;
   }, 1000);
 
   try {
-    // Nếu server vừa ngủ dậy, ping trước để wake up (dùng no-cors để không bị block bởi CORS)
-    fetch(base + '/health', { mode: 'no-cors' }).catch(() => {});
+    // Bước 1: Lấy GCS upload URL từ backend
+    currentStep = steps[0]; secs = 0;
+    const urlRes = await fetch(`${base}/upload-url?filename=${encodeURIComponent(compFile.name)}`, {
+      mode: 'cors', signal: AbortSignal.timeout(15000),
+    });
+    if (!urlRes.ok) throw new Error('Không lấy được upload URL');
+    const { upload_url, object_name } = await urlRes.json();
 
+    // Bước 2: Upload trực tiếp lên GCS (bỏ qua giới hạn 32MB của Cloud Run)
+    currentStep = steps[1]; secs = 0;
+    const uploadRes = await fetch(upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: compFile,
+    });
+    if (!uploadRes.ok && uploadRes.status !== 308) {
+      throw new Error(`Upload GCS thất bại: ${uploadRes.status}`);
+    }
+
+    // Bước 3: Gọi backend nén từ GCS
+    currentStep = steps[2]; secs = 0;
     const form = new FormData();
-    form.append('file', compFile);
+    form.append('object_name', object_name);
     form.append('quality', document.getElementById('comp-quality').value);
     form.append('grayscale', document.getElementById('comp-grayscale').checked);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 phút
+    const timeoutId = setTimeout(() => controller.abort(), 300000);
 
-    const res = await fetch(base + '/compress', {
-      method: 'POST',
-      mode: 'cors',
-      body: form,
-      signal: controller.signal,
+    const res = await fetch(`${base}/compress-gcs`, {
+      method: 'POST', mode: 'cors', body: form, signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
@@ -1710,18 +1721,10 @@ async function compressPdfGs() {
 
   } catch(e) {
     const isTimeout = e.name === 'AbortError';
-    if (!isTimeout && isCorsError(e)) {
-      resultEl.style.display = 'block';
-      resultEl.className = 'alert alert-warning';
-      resultEl.innerHTML = `Lỗi: Failed to fetch do CORS / backend không cho phép truy cập từ trình duyệt. Đang chuyển sang nén client-side backup...`;
-      await compressPdfLocal();
-      return;
-    }
-
     resultEl.style.display = 'block';
     resultEl.className = 'alert alert-danger';
     resultEl.innerHTML = isTimeout
-      ? `Timeout sau ${secs}s — file quá lớn cho free tier. Thử mức nén <strong>screen</strong> hoặc dùng nút <strong>Nén client-side</strong>.`
+      ? `Timeout sau ${secs}s — file quá lớn. Thử mức nén <strong>screen</strong> hoặc dùng nút <strong>Nén client-side</strong>.`
       : `Lỗi: ${e.message}`;
   } finally {
     clearInterval(timer);
