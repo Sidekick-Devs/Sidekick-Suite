@@ -866,13 +866,6 @@
       <!-- COMPRESS -->
       <div id="pdf-compress" style="display:none; flex-direction:column; gap:14px;">
 
-        <!-- API URL config -->
-        <div style="display:flex; align-items:center; gap:8px;">
-          <input type="text" id="gs-api-url" placeholder="https://sidekick-backend-12809406757.asia-southeast1.run.app" style="flex:1; font-size:12px; font-family:monospace;" oninput="saveApiUrl()">
-          <button class="btn" onclick="checkGsApi()" id="gs-check-btn" style="flex-shrink:0; font-size:12px;">Kiểm tra</button>
-          <span id="gs-status" style="font-size:12px;"></span>
-        </div>
-
         <div class="drop-zone" onclick="document.getElementById('pdf-comp-file').click()">
           <div class="drop-icon">🗜️</div>Chọn file PDF cần nén
         </div>
@@ -883,7 +876,7 @@
 
           <div class="grid-2">
             <div>
-              <label class="field-label">Mức nén (Ghostscript)</label>
+              <label class="field-label">Mức nén</label>
               <select id="comp-quality">
                 <option value="screen">Screen — nhỏ nhất, 72 dpi (gửi web)</option>
                 <option value="ebook" selected>Ebook — cân bằng, 150 dpi (gửi email)</option>
@@ -900,13 +893,7 @@
         </div>
 
         <div class="btn-row">
-          <button class="btn success" onclick="compressPdfGs()" id="comp-btn">🗜️ Nén với Ghostscript</button>
-          <button class="btn" onclick="compressPdfLocal()" style="font-size:12px;">Nén client-side (backup)</button>
-        </div>
-
-        <div class="alert alert-info" style="font-size:12px; line-height:1.6;">
-          Đã có API Ghostscript sẵn: <strong>https://sidekick-backend-12809406757.asia-southeast1.run.app</strong>. Nhập hoặc dùng giá trị mặc định rồi nén PDF.
-          <br>Backend cần trả header <code>Access-Control-Allow-Origin: *</code> để hoạt động từ trình duyệt.
+          <button class="btn success" onclick="compressPdfGs()" id="comp-btn">🗜️ Nén PDF</button>
         </div>
       </div>
 
@@ -1575,52 +1562,10 @@ function download(bytes, name) {
 }
 
 // ────────────────────────────────────────────────────────
-// PDF COMPRESS (Ghostscript API + local fallback)
+// PDF COMPRESS
 // ────────────────────────────────────────────────────────
 let compFile = null;
-const defaultGsApiUrl = 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
-
-// Lưu/load API URL từ localStorage
-(function initApiUrl() {
-  const saved = localStorage.getItem('gs-api-url');
-  const el = document.getElementById('gs-api-url');
-  if (el) el.value = saved || defaultGsApiUrl;
-})();
-
-function saveApiUrl() {
-  const url = document.getElementById('gs-api-url').value.trim();
-  localStorage.setItem('gs-api-url', url);
-}
-
-function getApiBase() {
-  return (document.getElementById('gs-api-url').value || '').trim().replace(/\/$/, '');
-}
-
-function isCorsError(err) {
-  return err && err.message && err.message.toLowerCase().includes('failed to fetch');
-}
-
-async function checkGsApi() {
-  const base = getApiBase();
-  const btn = document.getElementById('gs-check-btn');
-  const status = document.getElementById('gs-status');
-  if (!base) { status.textContent = 'Nhập URL trước'; return; }
-  btn.textContent = '...'; status.textContent = '';
-  try {
-    const res = await fetch(base + '/health', { mode: 'cors', signal: AbortSignal.timeout(8000) });
-    const data = await res.json();
-    if (data.gs) {
-      status.innerHTML = '<span style="color:var(--accent)">✓ Online · GS sẵn sàng</span>';
-    } else {
-      status.innerHTML = '<span style="color:var(--danger)">✗ Server online nhưng Ghostscript chưa cài</span>';
-    }
-  } catch(e) {
-    const msg = isCorsError(e)
-      ? '✗ Không kết nối được / CORS bị chặn. Kiểm tra backend phải trả Access-Control-Allow-Origin.'
-      : `✗ Không kết nối được${e && e.message ? ': ' + e.message : ''}`;
-    status.innerHTML = `<span style="color:var(--danger)">${msg}</span>`;
-  } finally { btn.textContent = 'Kiểm tra'; }
-}
+const GS_API_BASE = 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 
 function loadCompFile(input) {
   const f = input.files[0]; if (!f) return;
@@ -1649,8 +1594,7 @@ function showCompResult(origSize, newSize, method) {
 
 async function compressPdfGs() {
   if (!compFile) { alert('Chưa chọn file'); return; }
-  const base = getApiBase();
-  if (!base) { alert('Nhập URL API backend trước'); return; }
+  const base = GS_API_BASE;
 
   const btn = document.getElementById('comp-btn');
   const resultEl = document.getElementById('comp-result');
@@ -1731,25 +1675,11 @@ async function compressPdfGs() {
       : `Lỗi: ${e.message}`;
   } finally {
     clearInterval(timer);
-    btn.textContent = '🗜️ Nén với Ghostscript';
+    btn.textContent = '🗜️ Nén PDF';
     btn.disabled = false;
   }
 }
 
-async function compressPdfLocal() {
-  if (!compFile) { alert('Chưa chọn file'); return; }
-  const origSize = compFile.size;
-  const ab = await compFile.arrayBuffer();
-  const pdfDoc = await PDFLib.PDFDocument.load(new Uint8Array(ab));
-  pdfDoc.setTitle(''); pdfDoc.setAuthor(''); pdfDoc.setSubject('');
-  pdfDoc.setKeywords([]); pdfDoc.setProducer(''); pdfDoc.setCreator('');
-  pdfDoc.getPages().forEach(page => {
-    try { page.node.delete(PDFLib.PDFName.of('Annots')); } catch(e) {}
-  });
-  const bytes = await pdfDoc.save({ useObjectStreams: true });
-  download(bytes, compFile.name.replace('.pdf', '_compressed.pdf'));
-  showCompResult(origSize, bytes.length, 'Client-side');
-}
 
 // ────────────────────────────────────────────────────────
 // UTM BUILDER
