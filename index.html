@@ -1619,19 +1619,14 @@ async function compressPdfGs() {
     if (!urlRes.ok) throw new Error('Không lấy được upload URL');
     const { upload_url, object_name } = await urlRes.json();
 
-    // Bước 2: Upload trực tiếp lên GCS (bỏ qua giới hạn 32MB của Cloud Run)
+    // Bước 2: Upload trực tiếp lên GCS
     currentStep = steps[1]; secs = 0;
-    try {
-      await fetch(upload_url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/pdf' },
-        body: compFile,
-      });
-    } catch (uploadErr) {
-      // GCS trả 200 OK nhưng nếu CORS chưa set thì browser vẫn block response.
-      // Tiếp tục bước 3 — nếu upload thật sự thất bại, bước 3 sẽ báo lỗi rõ hơn.
-      console.warn('GCS upload response blocked by CORS (expected nếu bucket CORS chưa set):', uploadErr);
-    }
+    await fetch(upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: compFile,
+      mode: 'no-cors',
+    });
 
     // Bước 3: Gọi backend nén từ GCS
     currentStep = steps[2]; secs = 0;
