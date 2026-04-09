@@ -868,7 +868,7 @@
 
         <!-- API URL config -->
         <div style="display:flex; align-items:center; gap:8px;">
-          <input type="text" id="gs-api-url" placeholder="https://sidekick-backend.onrender.com" style="flex:1; font-size:12px; font-family:monospace;" oninput="saveApiUrl()">
+          <input type="text" id="gs-api-url" placeholder="https://sidekick-backend-12809406757.asia-southeast1.run.app" style="flex:1; font-size:12px; font-family:monospace;" oninput="saveApiUrl()">
           <button class="btn" onclick="checkGsApi()" id="gs-check-btn" style="flex-shrink:0; font-size:12px;">Kiểm tra</button>
           <span id="gs-status" style="font-size:12px;"></span>
         </div>
@@ -905,7 +905,8 @@
         </div>
 
         <div class="alert alert-info" style="font-size:12px; line-height:1.6;">
-          Cần deploy <strong>sidekick-backend</strong> lên Render.com và điền URL API ở trên. Xem README trong repo backend để hướng dẫn.
+          Đã có API Ghostscript sẵn: <strong>https://sidekick-backend-12809406757.asia-southeast1.run.app</strong>. Nhập hoặc dùng giá trị mặc định rồi nén PDF.
+          <br>Backend cần trả header <code>Access-Control-Allow-Origin: *</code> để hoạt động từ trình duyệt.
         </div>
       </div>
 
@@ -1577,14 +1578,13 @@ function download(bytes, name) {
 // PDF COMPRESS (Ghostscript API + local fallback)
 // ────────────────────────────────────────────────────────
 let compFile = null;
+const defaultGsApiUrl = 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 
 // Lưu/load API URL từ localStorage
 (function initApiUrl() {
   const saved = localStorage.getItem('gs-api-url');
-  if (saved) {
-    const el = document.getElementById('gs-api-url');
-    if (el) el.value = saved;
-  }
+  const el = document.getElementById('gs-api-url');
+  if (el) el.value = saved || defaultGsApiUrl;
 })();
 
 function saveApiUrl() {
@@ -1596,6 +1596,10 @@ function getApiBase() {
   return (document.getElementById('gs-api-url').value || '').trim().replace(/\/$/, '');
 }
 
+function isCorsError(err) {
+  return err && err.message && err.message.toLowerCase().includes('failed to fetch');
+}
+
 async function checkGsApi() {
   const base = getApiBase();
   const btn = document.getElementById('gs-check-btn');
@@ -1603,7 +1607,7 @@ async function checkGsApi() {
   if (!base) { status.textContent = 'Nhập URL trước'; return; }
   btn.textContent = '...'; status.textContent = '';
   try {
-    const res = await fetch(base + '/health', { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(base + '/health', { mode: 'cors', signal: AbortSignal.timeout(8000) });
     const data = await res.json();
     if (data.gs) {
       status.innerHTML = '<span style="color:var(--accent)">✓ Online · GS sẵn sàng</span>';
@@ -1611,7 +1615,10 @@ async function checkGsApi() {
       status.innerHTML = '<span style="color:var(--danger)">✗ Server online nhưng Ghostscript chưa cài</span>';
     }
   } catch(e) {
-    status.innerHTML = '<span style="color:var(--danger)">✗ Không kết nối được</span>';
+    const msg = isCorsError(e)
+      ? '✗ Không kết nối được / CORS bị chặn. Kiểm tra backend phải trả Access-Control-Allow-Origin.'
+      : `✗ Không kết nối được${e && e.message ? ': ' + e.message : ''}`;
+    status.innerHTML = `<span style="color:var(--danger)">${msg}</span>`;
   } finally { btn.textContent = 'Kiểm tra'; }
 }
 
@@ -1664,8 +1671,8 @@ async function compressPdfGs() {
   }, 1000);
 
   try {
-    // Nếu server vừa ngủ dậy, ping trước để wake up
-    fetch(base + '/health').catch(() => {});
+    // Nếu server vừa ngủ dậy, ping trước để wake up (dùng no-cors để không bị block bởi CORS)
+    fetch(base + '/health', { mode: 'no-cors' }).catch(() => {});
 
     const form = new FormData();
     form.append('file', compFile);
@@ -1677,6 +1684,7 @@ async function compressPdfGs() {
 
     const res = await fetch(base + '/compress', {
       method: 'POST',
+      mode: 'cors',
       body: form,
       signal: controller.signal,
     });
@@ -1702,6 +1710,14 @@ async function compressPdfGs() {
 
   } catch(e) {
     const isTimeout = e.name === 'AbortError';
+    if (!isTimeout && isCorsError(e)) {
+      resultEl.style.display = 'block';
+      resultEl.className = 'alert alert-warning';
+      resultEl.innerHTML = `Lỗi: Failed to fetch do CORS / backend không cho phép truy cập từ trình duyệt. Đang chuyển sang nén client-side backup...`;
+      await compressPdfLocal();
+      return;
+    }
+
     resultEl.style.display = 'block';
     resultEl.className = 'alert alert-danger';
     resultEl.innerHTML = isTimeout
