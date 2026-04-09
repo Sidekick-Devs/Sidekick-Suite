@@ -1697,7 +1697,7 @@ async function compressPdfGs() {
     form.append('grayscale', document.getElementById('comp-grayscale').checked);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000);
+    const timeoutId = setTimeout(() => controller.abort(), 1500000); // 25 phút
 
     const res = await fetch(`${base}/compress-gcs`, {
       method: 'POST', mode: 'cors', body: form, signal: controller.signal,
