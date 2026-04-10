@@ -1550,7 +1550,15 @@ async function processPdf(mode) {
       const [tw,th]=pageSizes[document.getElementById('cmp-size').value];
       const out=await PDFDocument.create();
       const pages=await out.copyPages(doc,[...Array(total).keys()]);
-      pages.forEach(p=>{ p.setSize(tw,th); out.addPage(p); });
+      pages.forEach(p=>{
+        const {width:sw, height:sh}=p.getSize();
+        const scale=Math.min(tw/sw, th/sh);
+        const ox=(tw-sw*scale)/2, oy=(th-sh*scale)/2;
+        p.setSize(tw,th);
+        p.scaleContent(scale,scale);
+        p.translateContent(ox,oy);
+        out.addPage(p);
+      });
       download(await out.save(),'resized.pdf');
     }
   } catch(e) { alert('Lỗi xử lý PDF: '+e.message); }
