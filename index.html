@@ -1633,7 +1633,7 @@ async function compressPdfGs() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/pdf' },
       body: compFile,
-      mode: 'cors',
+      mode: 'no-cors',
     });
 
     // Bước 3: Gọi backend nén từ GCS
