@@ -13,7 +13,7 @@ Bộ công cụ nội bộ chạy hoàn toàn trên trình duyệt (không cần
 | **Regex Tester** | Test regex với highlight, replace, group capture |
 | **Base64** | Encode/decode text và file |
 | **Color Converter** | HEX ↔ RGB ↔ HSL ↔ HSV ↔ CMYK + palette |
-| **PDF Tools** | Ghép (+ resize), tách, xóa trang, xoay, resize |
+| **PDF Tools** | Ghép (+ resize), tách, xóa trang, đổi thứ tự trang, xoay, resize, PDF → PPTX |
 
 ## Deploy lên GitHub Pages
 

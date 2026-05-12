@@ -6,6 +6,7 @@
   <title>Sidekick Suites</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -283,6 +284,7 @@
       transition: all 0.15s;
     }
     .drop-zone:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent-text); }
+    .drop-zone.dragover { border-color: var(--accent); background: var(--accent-light); color: var(--accent-text); transform: translateY(-1px); }
     .drop-zone .drop-icon { font-size: 24px; margin-bottom: 8px; }
     .file-list { display: flex; flex-direction: column; gap: 6px; }
     .file-item {
@@ -302,6 +304,179 @@
       padding: 0 2px; transition: color 0.1s;
     }
     .file-item-remove:hover { color: var(--danger); }
+    .reorder-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      max-height: 68vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .reorder-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: grab;
+      transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+      user-select: none;
+    }
+    .reorder-card:hover { border-color: var(--border-hover); }
+    .reorder-card.dragging {
+      opacity: 0.55;
+      transform: scale(0.98);
+      cursor: grabbing;
+    }
+    .reorder-card.drop-target {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(29,158,117,0.12);
+    }
+    .reorder-thumb {
+      width: 100%;
+      aspect-ratio: 0.75;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: calc(var(--radius) - 2px);
+      border: 1px solid var(--border);
+      background: white;
+    }
+    .reorder-thumb canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .reorder-thumb-placeholder {
+      color: var(--text-tertiary);
+      font-size: 12px;
+      text-align: center;
+      padding: 10px;
+    }
+    .reorder-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .reorder-index {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+    }
+    .reorder-page {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .reorder-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(29,158,117,0.14);
+    }
+    .reorder-preview-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      gap: 14px;
+      align-items: start;
+    }
+    .reorder-preview-stage {
+      min-height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      overflow: hidden;
+    }
+    .reorder-preview-stage img {
+      max-width: 100%;
+      max-height: 62vh;
+      object-fit: contain;
+      display: block;
+      border-radius: calc(var(--radius) - 2px);
+      box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+      background: white;
+    }
+    .reorder-preview-empty {
+      color: var(--text-tertiary);
+      font-size: 13px;
+      text-align: center;
+      max-width: 240px;
+    }
+    .reorder-preview-side {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .reorder-preview-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .reorder-preview-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .reorder-preview-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .reorder-mini-btn {
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .reorder-mini-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .reorder-hover-preview {
+      position: fixed;
+      z-index: 40;
+      width: min(320px, calc(100vw - 24px));
+      pointer-events: none;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 18px 44px rgba(15,23,42,0.16);
+      padding: 10px;
+      display: none;
+    }
+    .reorder-hover-preview.visible { display: block; }
+    .reorder-hover-preview img {
+      width: 100%;
+      max-height: 60vh;
+      object-fit: contain;
+      display: block;
+      border-radius: calc(var(--radius) - 2px);
+      background: white;
+      border: 1px solid var(--border);
+    }
+    .reorder-hover-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 8px;
+    }
+    @media (max-width: 900px) {
+      .reorder-preview-panel { grid-template-columns: 1fr; }
+      .reorder-preview-stage img { max-height: 46vh; }
+    }
 
     /* REGEX HIGHLIGHT */
     .rx-result {
@@ -674,7 +849,7 @@
         <div id="b64-hint" class="alert alert-info" style="display:none; margin-top:8px;"></div>
       </div>
       <div id="b64-file-section" style="display:none;">
-        <div class="drop-zone" onclick="document.getElementById('b64-file').click()">
+        <div class="drop-zone" id="drop-b64-file" onclick="document.getElementById('b64-file').click()">
           <div class="drop-icon">📎</div>
           Nhấn để chọn file cần encode thành Base64
         </div>
@@ -733,14 +908,16 @@
     <div class="tool-pane" id="tab-pdf">
       <div class="tool-header">
         <div class="tool-title">PDF Tools</div>
-        <div class="tool-desc">Ghép, tách, xóa trang, xoay, resize — xử lý hoàn toàn trên máy bạn</div>
+        <div class="tool-desc">Ghép, tách, xóa trang, xoay, resize, xuất PPTX — xử lý nhanh ngay trong trình duyệt</div>
       </div>
       <div class="tag-row">
         <span class="tag active" onclick="switchPdf('merge',this)">Ghép PDF</span>
         <span class="tag" onclick="switchPdf('split',this)">Tách trang</span>
         <span class="tag" onclick="switchPdf('delete',this)">Xóa trang</span>
+        <span class="tag" onclick="switchPdf('reorder',this)">Đổi thứ tự trang</span>
         <span class="tag" onclick="switchPdf('rotate',this)">Xoay trang</span>
         <span class="tag" onclick="switchPdf('resize',this)">Resize trang</span>
+        <span class="tag" onclick="switchPdf('pptx',this)">PDF → PPTX</span>
         <span class="tag" onclick="switchPdf('compress',this)">Nén PDF</span>
       </div>
 
@@ -771,7 +948,7 @@
 
       <!-- SPLIT -->
       <div id="pdf-split" style="display:none;">
-        <div class="drop-zone" onclick="document.getElementById('pdf-split-file').click()">
+        <div class="drop-zone" id="drop-split" onclick="document.getElementById('pdf-split-file').click()">
           <div class="drop-icon">✂️</div>Chọn file PDF cần tách
         </div>
         <input type="file" id="pdf-split-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'split')">
@@ -796,7 +973,7 @@
 
       <!-- DELETE -->
       <div id="pdf-delete" style="display:none;">
-        <div class="drop-zone" onclick="document.getElementById('pdf-del-file').click()">
+        <div class="drop-zone" id="drop-delete" onclick="document.getElementById('pdf-del-file').click()">
           <div class="drop-icon">🗑️</div>Chọn file PDF
         </div>
         <input type="file" id="pdf-del-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'del')">
@@ -812,9 +989,44 @@
         </div>
       </div>
 
+      <!-- REORDER -->
+      <div id="pdf-reorder" style="display:none;">
+        <div class="drop-zone" id="drop-reorder" onclick="document.getElementById('pdf-reorder-file').click()">
+          <div class="drop-icon">🔀</div>Chọn file PDF cần đổi thứ tự trang
+        </div>
+        <input type="file" id="pdf-reorder-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'reorder')">
+        <div id="reorder-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="reorder-info-text"></div>
+          <div class="alert alert-info" id="reorder-status">
+            Kéo thả các thumbnail để đổi vị trí trang, rồi tải file PDF mới.
+          </div>
+          <div class="reorder-preview-panel">
+            <div class="reorder-preview-stage" id="reorder-preview-stage">
+              <div class="reorder-preview-empty">Click vào một trang để xem preview lớn.</div>
+            </div>
+            <div class="reorder-preview-side">
+              <div class="reorder-preview-title" id="reorder-preview-title">Chưa chọn trang</div>
+              <div class="reorder-preview-sub" id="reorder-preview-sub">Hover vào thumbnail để xem nhanh. Click để ghim preview lớn và dùng nút chuyển trang.</div>
+              <div class="reorder-preview-actions">
+                <button class="reorder-mini-btn" id="reorder-preview-prev" onclick="stepReorderPreview(-1)" disabled>← Trang trước</button>
+                <button class="reorder-mini-btn" id="reorder-preview-next" onclick="stepReorderPreview(1)" disabled>Trang sau →</button>
+              </div>
+            </div>
+          </div>
+          <div class="reorder-grid" id="reorder-grid"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="processPdf('reorder')">📥 Đổi thứ tự & Tải về</button>
+        </div>
+      </div>
+      <div class="reorder-hover-preview" id="reorder-hover-preview">
+        <div id="reorder-hover-stage"></div>
+        <div class="reorder-hover-label" id="reorder-hover-label"></div>
+      </div>
+
       <!-- ROTATE -->
       <div id="pdf-rotate" style="display:none;">
-        <div class="drop-zone" onclick="document.getElementById('pdf-rot-file').click()">
+        <div class="drop-zone" id="drop-rotate" onclick="document.getElementById('pdf-rot-file').click()">
           <div class="drop-icon">🔄</div>Chọn file PDF cần xoay
         </div>
         <input type="file" id="pdf-rot-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'rot')">
@@ -842,7 +1054,7 @@
 
       <!-- RESIZE -->
       <div id="pdf-resize" style="display:none;">
-        <div class="drop-zone" onclick="document.getElementById('pdf-cmp-file').click()">
+        <div class="drop-zone" id="drop-resize" onclick="document.getElementById('pdf-cmp-file').click()">
           <div class="drop-icon">📐</div>Chọn file PDF cần resize
         </div>
         <input type="file" id="pdf-cmp-file" accept=".pdf" style="display:none" onchange="loadSinglePdf(this,'cmp')">
@@ -863,10 +1075,41 @@
         </div>
       </div>
 
+      <!-- PDF TO PPTX -->
+      <div id="pdf-pptx" style="display:none; flex-direction:column; gap:14px;">
+        <div class="drop-zone" id="drop-pptx" onclick="document.getElementById('pdf-pptx-file').click()">
+          <div class="drop-icon">🖼️</div>Chọn file PDF để chuyển thành PowerPoint
+        </div>
+        <input type="file" id="pdf-pptx-file" accept=".pdf" style="display:none" onchange="loadPdfToPptxFile(this)">
+
+        <div id="pptx-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="pptx-info-text"></div>
+          <div class="grid-2">
+            <div>
+              <label class="field-label">Chất lượng ảnh slide</label>
+              <select id="pptx-quality">
+                <option value="1.5">Standard — nhẹ hơn</option>
+                <option value="2" selected>High — cân bằng</option>
+                <option value="2.5">Very high — file nặng hơn</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Trang cần export</label>
+              <input type="text" id="pptx-pages" placeholder="Để trống = tất cả, VD: 1,3,5-8">
+            </div>
+          </div>
+          <div class="alert alert-info" id="pptx-status">Mỗi trang PDF sẽ thành 1 slide ảnh trong file `.pptx`.</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn success" onclick="convertPdfToPptx()" id="pptx-btn">📥 Convert sang PPTX</button>
+        </div>
+      </div>
+
       <!-- COMPRESS -->
       <div id="pdf-compress" style="display:none; flex-direction:column; gap:14px;">
 
-        <div class="drop-zone" onclick="document.getElementById('pdf-comp-file').click()">
+        <div class="drop-zone" id="drop-compress" onclick="document.getElementById('pdf-comp-file').click()">
           <div class="drop-icon">🗜️</div>Chọn file PDF cần nén
         </div>
         <input type="file" id="pdf-comp-file" accept=".pdf" style="display:none" onchange="loadCompFile(this)">
@@ -1043,6 +1286,88 @@ function switchTab(name, el) {
   document.getElementById('tab-' + name).classList.add('active');
   el.classList.add('active');
 }
+function fileMatchesAccept(file, accept) {
+  if (!accept) return true;
+  const tokens = accept.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (!tokens.length) return true;
+  const fileName = file.name.toLowerCase();
+  const mime = (file.type || '').toLowerCase();
+  return tokens.some(token => {
+    if (token.startsWith('.')) return fileName.endsWith(token);
+    if (token.endsWith('/*')) return mime.startsWith(token.slice(0, -1));
+    return mime === token;
+  });
+}
+function getFilteredDroppedFiles(files, input) {
+  const allFiles = Array.from(files || []).filter(Boolean);
+  const accepted = allFiles.filter(file => fileMatchesAccept(file, input.accept || ''));
+  if (!accepted.length) {
+    const label = input.accept || 'định dạng được hỗ trợ';
+    alert(`File không đúng định dạng. Chỉ nhận ${label}.`);
+    return [];
+  }
+  if (!input.multiple && accepted.length > 1) return [accepted[0]];
+  return accepted;
+}
+function setInputFiles(input, files) {
+  try {
+    const dt = new DataTransfer();
+    files.forEach(file => dt.items.add(file));
+    input.files = dt.files;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+function triggerFileInput(input, files) {
+  const acceptedFiles = getFilteredDroppedFiles(files, input);
+  if (!acceptedFiles.length) return;
+  const assigned = setInputFiles(input, acceptedFiles);
+  if (assigned) {
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+  if (typeof input.onchange === 'function') {
+    input.onchange.call(input, { target: { files: acceptedFiles } });
+  }
+}
+function bindFileDropZone(zoneId, inputId) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  if (!zone || !input) return;
+  ['dragenter', 'dragover'].forEach(type => {
+    zone.addEventListener(type, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      zone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'dragend', 'drop'].forEach(type => {
+    zone.addEventListener(type, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (type !== 'drop' || !zone.contains(event.relatedTarget)) zone.classList.remove('dragover');
+    });
+  });
+  zone.addEventListener('drop', event => {
+    const files = event.dataTransfer ? event.dataTransfer.files : null;
+    triggerFileInput(input, files);
+  });
+}
+function initFileDropZones() {
+  [
+    ['drop-b64-file', 'b64-file'],
+    ['drop-merge', 'pdf-files-merge'],
+    ['drop-split', 'pdf-split-file'],
+    ['drop-delete', 'pdf-del-file'],
+    ['drop-reorder', 'pdf-reorder-file'],
+    ['drop-rotate', 'pdf-rot-file'],
+    ['drop-resize', 'pdf-cmp-file'],
+    ['drop-pptx', 'pdf-pptx-file'],
+    ['drop-compress', 'pdf-comp-file']
+  ].forEach(([zoneId, inputId]) => bindFileDropZone(zoneId, inputId));
+}
+document.addEventListener('DOMContentLoaded', initFileDropZones);
 
 // ────────────────────────────────────────────────────────
 // TEXT CLEANER
@@ -1448,9 +1773,29 @@ convertColor('hex');
 // ────────────────────────────────────────────────────────
 const {PDFDocument, degrees} = PDFLib;
 let mergeFiles = [];
+let pdfToPptxFile = null;
+let pdfjsReady = null;
+let reorderPageOrder = [];
+let reorderDragIndex = null;
+let reorderThumbObserver = null;
+let reorderThumbCache = new Map();
+let reorderThumbInflight = new Set();
+let reorderPreviewCache = new Map();
+let reorderPreviewInflight = new Set();
+let reorderSelectedPage = null;
+let reorderHoverPage = null;
+
+function ensurePdfJs() {
+  if (pdfjsReady) return pdfjsReady;
+  pdfjsReady = import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs').then(mod => {
+    mod.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+    return mod;
+  });
+  return pdfjsReady;
+}
 
 function switchPdf(mode, el) {
-  ['merge','split','delete','rotate','resize','compress'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
+  ['merge','split','delete','reorder','rotate','resize','pptx','compress'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
   document.getElementById('pdf-'+mode).style.display='block';
   document.querySelectorAll('#tab-pdf .tag').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
@@ -1466,6 +1811,20 @@ function addMergeFiles(input) {
 }
 function removeMergeFile(btn, name) { mergeFiles=mergeFiles.filter(f=>f.name!==name); btn.closest('.file-item').remove(); }
 function clearMergeList() { mergeFiles=[]; document.getElementById('merge-list').innerHTML=''; }
+function loadPdfToPptxFile(input) {
+  const f = input.files[0];
+  if (!f) return;
+  pdfToPptxFile = f;
+  const infoEl = document.getElementById('pptx-info');
+  infoEl.style.display = 'flex';
+  infoEl.style.flexDirection = 'column';
+  infoEl.style.gap = '12px';
+  document.getElementById('pptx-info-text').textContent =
+    `📄 ${f.name} — ${(f.size / 1024).toFixed(0)} KB`;
+  document.getElementById('pptx-status').className = 'alert alert-info';
+  document.getElementById('pptx-status').textContent =
+    'Mỗi trang PDF sẽ thành 1 slide ảnh trong file .pptx.';
+}
 function loadSinglePdf(input, prefix) {
   const f=input.files[0]; if(!f) return;
   const reader=new FileReader();
@@ -1477,6 +1836,7 @@ function loadSinglePdf(input, prefix) {
       infoEl.style.display='flex'; infoEl.style.flexDirection='column'; infoEl.style.gap='12px';
       document.getElementById(prefix+'-info-text').textContent=`📄 ${f.name} — ${n} trang, ${(f.size/1024).toFixed(0)} KB`;
       infoEl._doc=doc; infoEl._file=f;
+      if (prefix === 'reorder') await setupReorderPreview(f, n);
     } catch(e) { alert('Không đọc được PDF: '+e.message); }
   };
   reader.readAsArrayBuffer(f);
@@ -1491,7 +1851,309 @@ function parsePageList(str, total) {
   });
   return [...s].sort((a,b)=>a-b);
 }
+function setReorderStatus(message, type='info') {
+  const statusEl = document.getElementById('reorder-status');
+  statusEl.className = `alert alert-${type}`;
+  statusEl.textContent = message;
+}
+function clearReorderDropTargets() {
+  document.querySelectorAll('#reorder-grid .reorder-card').forEach(card => card.classList.remove('drop-target'));
+}
+function hideReorderHoverPreview() {
+  reorderHoverPage = null;
+  const el = document.getElementById('reorder-hover-preview');
+  el.classList.remove('visible');
+}
+function resetReorderObserver() {
+  if (reorderThumbObserver) reorderThumbObserver.disconnect();
+  reorderThumbObserver = null;
+}
+function moveReorderPage(fromIndex, toIndex) {
+  if (fromIndex === toIndex || fromIndex == null || toIndex == null) return;
+  const [moved] = reorderPageOrder.splice(fromIndex, 1);
+  reorderPageOrder.splice(toIndex, 0, moved);
+}
+function initReorderObserver() {
+  resetReorderObserver();
+  const grid = document.getElementById('reorder-grid');
+  if (!grid || typeof IntersectionObserver === 'undefined') return;
+  reorderThumbObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const card = entry.target;
+      reorderThumbObserver.unobserve(card);
+      renderReorderThumbnailForCard(card);
+    });
+  }, {
+    root: grid,
+    rootMargin: '300px 0px',
+    threshold: 0.01
+  });
+}
+function renderReorderGrid() {
+  const grid = document.getElementById('reorder-grid');
+  grid.innerHTML = '';
+  reorderPageOrder.forEach((pageNumber, index) => {
+    const card = document.createElement('div');
+    card.className = 'reorder-card';
+    if (pageNumber === reorderSelectedPage) card.classList.add('selected');
+    card.draggable = true;
+    card.dataset.index = String(index);
+    card.dataset.pageNumber = String(pageNumber);
+
+    const thumb = document.createElement('div');
+    thumb.className = 'reorder-thumb';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'reorder-thumb-placeholder';
+    placeholder.textContent = reorderThumbCache.has(pageNumber) ? `Trang ${pageNumber}` : `Sẽ tải khi cuộn tới trang ${pageNumber}`;
+    thumb.appendChild(placeholder);
+
+    const meta = document.createElement('div');
+    meta.className = 'reorder-meta';
+    meta.innerHTML = `<span class="reorder-index">Vị trí ${index + 1}</span><span class="reorder-page">Trang ${pageNumber}</span>`;
+
+    card.appendChild(thumb);
+    card.appendChild(meta);
+
+    card.addEventListener('dragstart', event => {
+      reorderDragIndex = index;
+      hideReorderHoverPreview();
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(pageNumber));
+      }
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      reorderDragIndex = null;
+      card.classList.remove('dragging');
+      clearReorderDropTargets();
+    });
+    card.addEventListener('dragover', event => {
+      event.preventDefault();
+      clearReorderDropTargets();
+      card.classList.add('drop-target');
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drop-target');
+    });
+    card.addEventListener('drop', event => {
+      event.preventDefault();
+      if (reorderDragIndex == null) return;
+      const targetIndex = parseInt(card.dataset.index, 10);
+      moveReorderPage(reorderDragIndex, targetIndex);
+      clearReorderDropTargets();
+      renderReorderGrid();
+      updateReorderPreviewPanel();
+    });
+    card.addEventListener('click', () => {
+      hideReorderHoverPreview();
+      selectReorderPreviewPage(pageNumber);
+    });
+    card.addEventListener('mouseenter', event => showReorderHoverPreview(pageNumber, event));
+    card.addEventListener('mousemove', event => positionReorderHoverPreview(event));
+    card.addEventListener('mouseleave', () => hideReorderHoverPreview());
+
+    grid.appendChild(card);
+    if (reorderThumbObserver) reorderThumbObserver.observe(card);
+    else renderReorderThumbnailForCard(card);
+  });
+}
+async function renderReorderPreviewImage(pageNumber, scale=1) {
+  const cacheKey = `${pageNumber}@${scale}`;
+  if (reorderPreviewCache.has(cacheKey)) return reorderPreviewCache.get(cacheKey);
+  if (reorderPreviewInflight.has(cacheKey)) return null;
+  const infoEl = document.getElementById('reorder-info');
+  const pdf = infoEl._pdfjsDoc;
+  if (!pdf) return null;
+  reorderPreviewInflight.add(cacheKey);
+  try {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const dataUrl = canvas.toDataURL('image/png');
+    reorderPreviewCache.set(cacheKey, dataUrl);
+    return dataUrl;
+  } finally {
+    reorderPreviewInflight.delete(cacheKey);
+  }
+}
+async function updateReorderPreviewPanel() {
+  const stage = document.getElementById('reorder-preview-stage');
+  const title = document.getElementById('reorder-preview-title');
+  const sub = document.getElementById('reorder-preview-sub');
+  const prevBtn = document.getElementById('reorder-preview-prev');
+  const nextBtn = document.getElementById('reorder-preview-next');
+  if (!reorderSelectedPage) {
+    stage.innerHTML = '<div class="reorder-preview-empty">Click vào một trang để xem preview lớn.</div>';
+    title.textContent = 'Chưa chọn trang';
+    sub.textContent = 'Hover vào thumbnail để xem nhanh. Click để ghim preview lớn và dùng nút chuyển trang.';
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    return;
+  }
+  const index = reorderPageOrder.indexOf(reorderSelectedPage);
+  title.textContent = `Trang ${reorderSelectedPage}`;
+  sub.textContent = index >= 0 ? `Đang ở vị trí ${index + 1} trong thứ tự hiện tại.` : 'Trang này không còn trong danh sách hiện tại.';
+  prevBtn.disabled = index <= 0;
+  nextBtn.disabled = index < 0 || index >= reorderPageOrder.length - 1;
+  stage.innerHTML = '<div class="reorder-preview-empty">Đang tải preview lớn...</div>';
+  try {
+    const dataUrl = await renderReorderPreviewImage(reorderSelectedPage, 1.1);
+    if (reorderSelectedPage == null || !dataUrl) return;
+    stage.innerHTML = `<img src="${dataUrl}" alt="Preview trang ${reorderSelectedPage}">`;
+  } catch (error) {
+    stage.innerHTML = `<div class="reorder-preview-empty">Không render được preview trang ${reorderSelectedPage}.</div>`;
+  }
+}
+function selectReorderPreviewPage(pageNumber) {
+  reorderSelectedPage = pageNumber;
+  renderReorderGrid();
+  updateReorderPreviewPanel();
+}
+function stepReorderPreview(direction) {
+  if (!reorderSelectedPage) return;
+  const index = reorderPageOrder.indexOf(reorderSelectedPage);
+  const nextIndex = index + direction;
+  if (nextIndex < 0 || nextIndex >= reorderPageOrder.length) return;
+  reorderSelectedPage = reorderPageOrder[nextIndex];
+  renderReorderGrid();
+  updateReorderPreviewPanel();
+}
+function handleReorderPreviewKeydown(event) {
+  const pdfTab = document.getElementById('tab-pdf');
+  const reorderPane = document.getElementById('pdf-reorder');
+  if (!pdfTab || !pdfTab.classList.contains('active')) return;
+  if (!reorderPane || reorderPane.style.display === 'none') return;
+  if (!reorderSelectedPage) return;
+
+  const activeTag = document.activeElement ? document.activeElement.tagName : '';
+  if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(activeTag)) return;
+  if (document.activeElement && document.activeElement.isContentEditable) return;
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    stepReorderPreview(-1);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    stepReorderPreview(1);
+  }
+}
+function positionReorderHoverPreview(event) {
+  const el = document.getElementById('reorder-hover-preview');
+  if (!el.classList.contains('visible')) return;
+  const offset = 18;
+  const maxLeft = window.innerWidth - el.offsetWidth - 12;
+  const maxTop = window.innerHeight - el.offsetHeight - 12;
+  const left = Math.min(event.clientX + offset, Math.max(12, maxLeft));
+  const top = Math.min(event.clientY + offset, Math.max(12, maxTop));
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+}
+async function showReorderHoverPreview(pageNumber, event) {
+  if (window.matchMedia('(hover: hover)').matches === false) return;
+  reorderHoverPage = pageNumber;
+  const el = document.getElementById('reorder-hover-preview');
+  const stage = document.getElementById('reorder-hover-stage');
+  const label = document.getElementById('reorder-hover-label');
+  label.textContent = `Trang ${pageNumber}`;
+  stage.innerHTML = '<div class="reorder-preview-empty">Đang tải preview...</div>';
+  el.classList.add('visible');
+  positionReorderHoverPreview(event);
+  try {
+    const dataUrl = await renderReorderPreviewImage(pageNumber, 0.7);
+    if (reorderHoverPage !== pageNumber || !dataUrl) return;
+    stage.innerHTML = `<img src="${dataUrl}" alt="Quick preview trang ${pageNumber}">`;
+    positionReorderHoverPreview(event);
+  } catch (error) {
+    if (reorderHoverPage === pageNumber) {
+      stage.innerHTML = '<div class="reorder-preview-empty">Không render được preview.</div>';
+    }
+  }
+}
+document.addEventListener('keydown', handleReorderPreviewKeydown);
+async function renderReorderThumbnailForCard(card) {
+  const pageNumber = parseInt(card.dataset.pageNumber, 10);
+  const thumb = card.querySelector('.reorder-thumb');
+  const placeholder = card.querySelector('.reorder-thumb-placeholder');
+  if (!thumb || !pageNumber) return;
+  if (reorderThumbCache.has(pageNumber)) {
+    thumb.innerHTML = `<img src="${reorderThumbCache.get(pageNumber)}" alt="Trang ${pageNumber}" style="width:100%;height:100%;object-fit:contain;display:block;">`;
+    return;
+  }
+  if (reorderThumbInflight.has(pageNumber)) return;
+  const infoEl = document.getElementById('reorder-info');
+  const pdf = infoEl._pdfjsDoc;
+  if (!pdf) return;
+  reorderThumbInflight.add(pageNumber);
+  try {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 0.28 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const dataUrl = canvas.toDataURL('image/png');
+    reorderThumbCache.set(pageNumber, dataUrl);
+    if (!card.isConnected) return;
+    thumb.innerHTML = `<img src="${dataUrl}" alt="Trang ${pageNumber}" style="width:100%;height:100%;object-fit:contain;display:block;">`;
+  } catch (error) {
+    if (placeholder) placeholder.textContent = `Không render được trang ${pageNumber}`;
+  } finally {
+    reorderThumbInflight.delete(pageNumber);
+  }
+}
+async function setupReorderPreview(file, totalPages) {
+  const infoEl = document.getElementById('reorder-info');
+  const grid = document.getElementById('reorder-grid');
+  resetReorderObserver();
+  reorderPageOrder = Array.from({length: totalPages}, (_, i) => i + 1);
+  reorderDragIndex = null;
+  reorderThumbCache = new Map();
+  reorderThumbInflight = new Set();
+  reorderPreviewCache = new Map();
+  reorderPreviewInflight = new Set();
+  reorderSelectedPage = totalPages ? 1 : null;
+  hideReorderHoverPreview();
+  infoEl._pdfjsDoc = null;
+  grid.innerHTML = '';
+  setReorderStatus('Đang nạp PDF. Thumbnail sẽ render dần khi cuộn.', 'info');
+  renderReorderGrid();
+  updateReorderPreviewPanel();
+  try {
+    const pdfjsLib = await ensurePdfJs();
+    const bytes = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    infoEl._pdfjsDoc = pdf;
+    initReorderObserver();
+    renderReorderGrid();
+    updateReorderPreviewPanel();
+    setReorderStatus('Kéo thả các thumbnail để đổi vị trí trang. Ảnh preview sẽ tải dần khi cuộn.', 'info');
+  } catch (error) {
+    infoEl._pdfjsDoc = null;
+    resetReorderObserver();
+    setReorderStatus(`Không render được thumbnail: ${error.message}`, 'danger');
+  }
+}
 const pageSizes={a4p:[595.28,841.89],a4l:[841.89,595.28],a3p:[841.89,1190.55],letter:[612,792]};
+function fitRect(srcW, srcH, dstW, dstH) {
+  const scale = Math.min(dstW / srcW, dstH / srcH);
+  const width = srcW * scale;
+  const height = srcH * scale;
+  return { x: (dstW - width) / 2, y: (dstH - height) / 2, width, height };
+}
+function getPptxSlideSize(viewport) {
+  const ratio = viewport.width / viewport.height;
+  if (ratio >= 1) return { width: 10, height: +(10 / ratio).toFixed(3) };
+  return { width: +(10 * ratio).toFixed(3), height: 10 };
+}
 async function processPdf(mode) {
   try {
     if(mode==='merge') {
@@ -1532,6 +2194,16 @@ async function processPdf(mode) {
       const keep=[...Array(total).keys()].filter(i=>!delSet.has(i));
       if(!keep.length){alert('Không thể xóa tất cả các trang');return;}
       const out=await PDFDocument.create(); const pages=await out.copyPages(doc,keep); pages.forEach(p=>out.addPage(p)); download(await out.save(),'edited.pdf');
+    } else if(mode==='reorder') {
+      const infoEl=document.getElementById('reorder-info');
+      if(!infoEl._doc){alert('Chưa chọn file');return;}
+      const doc=infoEl._doc, total=doc.getPageCount();
+      if (reorderPageOrder.length !== total) { alert('Danh sách trang chưa sẵn sàng'); return; }
+      const order=reorderPageOrder.map(pageNumber => pageNumber - 1);
+      const out=await PDFDocument.create();
+      const pages=await out.copyPages(doc,order);
+      pages.forEach(p=>out.addPage(p));
+      download(await out.save(),'reordered.pdf');
     } else if(mode==='rotate') {
       const infoEl=document.getElementById('rot-info');
       if(!infoEl._doc){alert('Chưa chọn file');return;}
@@ -1567,6 +2239,83 @@ function download(bytes, name) {
   const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
   const a=document.createElement('a'); a.href=url; a.download=name; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+async function convertPdfToPptx() {
+  if (!pdfToPptxFile) { alert('Chưa chọn file PDF'); return; }
+  if (typeof PptxGenJS === 'undefined') { alert('Chưa tải được thư viện PowerPoint'); return; }
+
+  const btn = document.getElementById('pptx-btn');
+  const statusEl = document.getElementById('pptx-status');
+  btn.disabled = true;
+
+  try {
+    statusEl.className = 'alert alert-info';
+    statusEl.textContent = 'Đang nạp PDF...';
+
+    const pdfjsLib = await ensurePdfJs();
+    const bytes = await pdfToPptxFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    const selectedPages = parsePageList(document.getElementById('pptx-pages').value, pdf.numPages);
+    if (!selectedPages.length) throw new Error('Không có trang hợp lệ để export');
+
+    const quality = parseFloat(document.getElementById('pptx-quality').value || '2');
+    const firstPage = await pdf.getPage(selectedPages[0] + 1);
+    const firstViewport = firstPage.getViewport({ scale: 1 });
+    const slideSize = getPptxSlideSize(firstViewport);
+
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'SIDEKICK_PDF', width: slideSize.width, height: slideSize.height });
+    pptx.layout = 'SIDEKICK_PDF';
+    pptx.author = 'Sidekick Suites';
+    pptx.company = 'Sidekick Suites';
+    pptx.subject = 'Converted from PDF';
+    pptx.title = pdfToPptxFile.name.replace(/\.pdf$/i, '');
+
+    for (let i = 0; i < selectedPages.length; i++) {
+      const pageNumber = selectedPages[i] + 1;
+      statusEl.textContent = `Đang render trang ${pageNumber}/${pdf.numPages} (${i + 1}/${selectedPages.length})...`;
+
+      const page = await pdf.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: quality });
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) throw new Error('Không tạo được canvas để render trang PDF');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+
+      await page.render({
+        canvasContext: ctx,
+        viewport,
+        background: 'rgb(255,255,255)'
+      }).promise;
+
+      const slide = pptx.addSlide();
+      slide.background = { color: 'FFFFFF' };
+      const imageData = canvas.toDataURL('image/jpeg', 0.92);
+      const box = fitRect(viewport.width, viewport.height, slideSize.width, slideSize.height);
+      slide.addImage({ data: imageData, x: box.x, y: box.y, w: box.width, h: box.height });
+    }
+
+    statusEl.textContent = 'Đang xuất file PPTX...';
+    const blob = await pptx.write({ outputType: 'blob' });
+    const outName = pdfToPptxFile.name.replace(/\.pdf$/i, '') + '.pptx';
+    downloadBlob(blob, outName);
+    statusEl.className = 'alert alert-success';
+    statusEl.textContent = `Xong: ${selectedPages.length} slide đã được xuất thành ${outName}`;
+  } catch (e) {
+    statusEl.className = 'alert alert-danger';
+    statusEl.textContent = 'Lỗi convert PPTX: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ────────────────────────────────────────────────────────
