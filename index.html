@@ -2429,7 +2429,7 @@ function _setPdfEditorTool(tool) {
       obj.evented = (tool === 'edit-text');
       obj.set('borderColor', tool === 'edit-text' ? 'rgba(0,119,253,0.7)' : 'transparent');
       if (!obj.data.changed) {
-        obj.set({ opacity: tool === 'edit-text' ? 1 : 0, backgroundColor: 'transparent', fill: 'transparent' });
+        obj.set({ opacity: tool === 'edit-text' ? 1 : 0, backgroundColor: tool === 'edit-text' ? 'rgba(0,119,253,0.12)' : 'transparent', fill: 'transparent' });
       }
     }
   });
@@ -2685,7 +2685,7 @@ function _reapplyToolModeToObjects() {
       obj.evented = isEditText;
       if (!obj.data.changed) {
         obj.opacity = isEditText ? 1 : 0;
-        obj.backgroundColor = 'transparent';
+        obj.backgroundColor = isEditText ? 'rgba(0,119,253,0.12)' : 'transparent';
       }
     }
   });
@@ -2944,7 +2944,7 @@ function _addDetectedTextToCanvas(blocks, zoom) {
         changed: false
       }
     });
-    // Only show text when actually editing (double-click) — prevents duplicate text on top of PDF
+    // Show blue highlight tint (not the text) so user can see editable zones without duplicate text
     itext.on('editing:entered', () => {
       itext.set({ fill: '#111111', backgroundColor: 'rgba(255,255,255,0.97)' });
       fabricCanvas.renderAll();
@@ -2957,8 +2957,8 @@ function _addDetectedTextToCanvas(blocks, zoom) {
         // White bg covers original PDF text; new text stays visible
         itext.set({ fill: '#111111', backgroundColor: '#ffffff', selectable: true, evented: true, opacity: 1 });
       } else {
-        // Reset: transparent so PDF background text shows through
-        itext.set({ fill: 'transparent', backgroundColor: 'transparent', opacity: pdfEditorTool === 'edit-text' ? 1 : 0 });
+        // Restore highlight tint (no text, just visible zone)
+        itext.set({ fill: 'transparent', backgroundColor: pdfEditorTool === 'edit-text' ? 'rgba(0,119,253,0.12)' : 'transparent', opacity: pdfEditorTool === 'edit-text' ? 1 : 0 });
       }
       fabricCanvas.renderAll();
       _countDirtyObjects();
