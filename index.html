@@ -1450,6 +1450,7 @@
               </div>
               <div class="btn-row">
                 <button class="btn primary" onclick="addPdfEditAction()">Apply edit</button>
+                <button class="btn" onclick="undoPdfEditAction()">Undo</button>
                 <button class="btn danger" onclick="clearPdfEditActions()">Clear</button>
               </div>
               <div class="pdf-edit-panel-title">Changes</div>
@@ -2420,6 +2421,99 @@ function updatePdfEditorThumbSelection() {
     item.classList.toggle('active', item.dataset.page === current);
   });
 }
+function getPdfEditorTextBoxes(items, viewport, editorScale, pageNumber) {
+  const pageWidth = viewport.width / editorScale;
+  const pageHeight = viewport.height / editorScale;
+  const raw = items
+    .filter(item => item.str && item.str.trim())
+    .map(item => {
+      const tx = item.transform[4];
+      const ty = item.transform[5];
+      const itemWidth = Math.max(item.width || 1, 1);
+      const itemHeight = Math.max(item.height || Math.abs(item.transform[3]) || 10, 1);
+      const rect = viewport.convertToViewportRectangle([tx, ty, tx + itemWidth, ty + itemHeight]);
+      const left = Math.min(rect[0], rect[2]);
+      const top = Math.min(rect[1], rect[3]);
+      const right = Math.max(rect[0], rect[2]);
+      const bottom = Math.max(rect[1], rect[3]);
+      return {
+        text: item.str.trim(),
+        x: tx,
+        y: ty,
+        width: itemWidth,
+        height: itemHeight,
+        left,
+        top,
+        right,
+        bottom,
+        midY: (top + bottom) / 2,
+        widthPx: Math.max(4, right - left),
+        heightPx: Math.max(6, bottom - top)
+      };
+    })
+    .sort((a, b) => Math.abs(a.midY - b.midY) > 5 ? a.midY - b.midY : a.left - b.left);
+
+  const lines = [];
+  raw.forEach(item => {
+    let line = lines.find(row => Math.abs(row.midY - item.midY) <= Math.max(5, Math.min(12, item.heightPx * 0.7)));
+    if (!line) {
+      line = { midY: item.midY, items: [] };
+      lines.push(line);
+    }
+    line.items.push(item);
+    line.midY = line.items.reduce((sum, part) => sum + part.midY, 0) / line.items.length;
+  });
+
+  const boxes = [];
+  lines.forEach(line => {
+    const parts = line.items.sort((a, b) => a.left - b.left);
+    let run = [];
+    const flushRun = () => {
+      if (!run.length) return;
+      const left = Math.min(...run.map(part => part.left));
+      const top = Math.min(...run.map(part => part.top));
+      const right = Math.max(...run.map(part => part.right));
+      const bottom = Math.max(...run.map(part => part.bottom));
+      const x = Math.min(...run.map(part => part.x));
+      const y = Math.min(...run.map(part => part.y));
+      const pdfRight = Math.max(...run.map(part => part.x + part.width));
+      const pdfTop = Math.max(...run.map(part => part.y + part.height));
+      const text = run.map(part => part.text).join(' ').replace(/\s+/g, ' ').trim();
+      if (text) {
+        boxes.push({
+          text,
+          page: pageNumber,
+          x,
+          y,
+          width: Math.max(1, pdfRight - x),
+          height: Math.max(1, pdfTop - y),
+          xPct: (x / pageWidth) * 100,
+          yPct: (1 - (y / pageHeight)) * 100,
+          widthPct: ((pdfRight - x) / pageWidth) * 100,
+          left,
+          top,
+          widthPx: Math.max(8, right - left),
+          heightPx: Math.max(9, bottom - top),
+          key: `${pageNumber}:${Math.round(x * 10)}:${Math.round(y * 10)}:${Math.round((pdfRight - x) * 10)}`
+        });
+      }
+      run = [];
+    };
+    parts.forEach(part => {
+      if (!run.length) {
+        run.push(part);
+        return;
+      }
+      const prev = run[run.length - 1];
+      const gap = part.left - prev.right;
+      const maxJoinGap = Math.max(10, Math.min(36, prev.heightPx * 1.8));
+      if (gap > maxJoinGap) flushRun();
+      run.push(part);
+    });
+    flushRun();
+  });
+  return boxes.sort((a, b) => Math.abs(a.top - b.top) > 5 ? a.top - b.top : a.left - b.left);
+}
 async function renderPdfEditorPage() {
   if (!pdfEditorJsDoc) return;
   pdfEditorSelectedText = null;
@@ -2446,34 +2540,7 @@ async function renderPdfEditorPage() {
     wrap.className = 'pdf-editor-canvas-wrap';
     wrap.appendChild(canvas);
     const textContent = await page.getTextContent();
-    pdfEditorPageTextItems = textContent.items
-      .map(item => {
-        const tx = item.transform[4];
-        const ty = item.transform[5];
-        const itemWidth = Math.max(item.width || 1, 1);
-        const itemHeight = Math.max(item.height || Math.abs(item.transform[3]) || 10, 1);
-        const rect = viewport.convertToViewportRectangle([tx, ty, tx + itemWidth, ty + itemHeight]);
-        const left = Math.min(rect[0], rect[2]);
-        const top = Math.min(rect[1], rect[3]);
-        const right = Math.max(rect[0], rect[2]);
-        const bottom = Math.max(rect[1], rect[3]);
-        return {
-          text: item.str || '',
-          page: pageNumber,
-          x: tx,
-          y: ty,
-          width: itemWidth,
-          height: itemHeight,
-          xPct: (tx / (viewport.width / editorScale)) * 100,
-          yPct: (1 - (ty / (viewport.height / editorScale))) * 100,
-          widthPct: (itemWidth / (viewport.width / editorScale)) * 100,
-          left,
-          top,
-          widthPx: Math.max(4, right - left),
-          heightPx: Math.max(6, bottom - top)
-        };
-      })
-      .filter(item => item.text.trim());
+    pdfEditorPageTextItems = getPdfEditorTextBoxes(textContent.items, viewport, editorScale, pageNumber);
     pdfEditorPageTextItems.forEach((item, index) => {
       const hit = document.createElement('button');
       hit.type = 'button';
@@ -2512,8 +2579,9 @@ function renderPdfEditActions() {
     return;
   }
   list.innerHTML = pdfEditorActions.map((action, index) => {
-    const label = (action.tool === 'text' || action.tool === 'replace') ? `${action.tool}: ${escapeXml(action.text || '').slice(0, 40)}` : action.tool;
-    return `<div class="pdf-editor-action">Trang ${action.page}: ${label}<button class="file-item-remove" style="float:right;" onclick="removePdfEditAction(${index})">×</button></div>`;
+    const verb = action.tool === 'replace' ? 'Edit text' : action.tool === 'text' ? 'Add text' : action.tool;
+    const preview = (action.tool === 'text' || action.tool === 'replace') ? `: ${escapeXml(action.text || '').slice(0, 58)}` : '';
+    return `<div class="pdf-editor-action"><strong>Trang ${action.page}</strong> · ${verb}${preview}<button class="file-item-remove" style="float:right;" onclick="removePdfEditAction(${index})">×</button></div>`;
   }).join('');
 }
 function buildPdfReplaceRect(selectedText) {
@@ -2533,7 +2601,7 @@ function buildPdfReplaceRect(selectedText) {
     originalHeight: selectedText.height
   };
 }
-function addPdfEditAction() {
+function buildPdfEditActionFromCurrent() {
   if (!pdfEditorDoc) { alert('Chưa chọn file PDF'); return; }
   const tool = getPdfEditorTool();
   const text = document.getElementById('edit-text').value;
@@ -2542,7 +2610,7 @@ function addPdfEditAction() {
     alert('Chọn text cần thay trong preview trước');
     return;
   }
-  pdfEditorActions.push({
+  return {
     tool,
     text,
     page: parseInt(document.getElementById('edit-page').value || '1', 10),
@@ -2552,14 +2620,31 @@ function addPdfEditAction() {
     widthPct: parseFloat(document.getElementById('edit-width').value || '28'),
     color: document.getElementById('edit-color').value,
     sourceText: pdfEditorSelectedText ? pdfEditorSelectedText.text : '',
+    selectionKey: tool === 'replace' && pdfEditorSelectedText ? pdfEditorSelectedText.key : '',
     rect: tool === 'replace' ? buildPdfReplaceRect(pdfEditorSelectedText) : null
-  });
+  };
+}
+function addPdfEditAction(options={}) {
+  const action = buildPdfEditActionFromCurrent();
+  if (!action) return false;
+  const existingIndex = action.selectionKey
+    ? pdfEditorActions.findIndex(item => item.selectionKey === action.selectionKey)
+    : -1;
+  if (existingIndex >= 0) pdfEditorActions[existingIndex] = action;
+  else pdfEditorActions.push(action);
   renderPdfEditActions();
-  document.getElementById('edit-status').textContent = `${pdfEditorActions.length} edit đang chờ export.`;
+  if (!options.silent) document.getElementById('edit-status').textContent = `${pdfEditorActions.length} edit đang chờ export.`;
+  return true;
 }
 function removePdfEditAction(index) {
   pdfEditorActions.splice(index, 1);
   renderPdfEditActions();
+}
+function undoPdfEditAction() {
+  if (!pdfEditorActions.length) return;
+  pdfEditorActions.pop();
+  renderPdfEditActions();
+  document.getElementById('edit-status').textContent = `${pdfEditorActions.length} edit đang chờ export.`;
 }
 function clearPdfEditActions() {
   pdfEditorActions = [];
@@ -2601,6 +2686,9 @@ async function loadPdfEditorFile(input) {
 }
 async function exportEditedPdf() {
   if (!pdfEditorFile) { alert('Chưa chọn file PDF'); return; }
+  if (getPdfEditorTool() === 'replace' && pdfEditorSelectedText && document.getElementById('edit-text').value.trim()) {
+    addPdfEditAction({ silent: true });
+  }
   if (!pdfEditorActions.length) { alert('Chưa có edit nào'); return; }
   const btn = document.getElementById('edit-btn');
   const statusEl = document.getElementById('edit-status');
