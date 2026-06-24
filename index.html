@@ -2422,13 +2422,15 @@ function _setPdfEditorTool(tool) {
     fabricCanvas.isDrawingMode = false;
     fabricCanvas.selection = tool === 'select';
   }
-  // In edit-text mode show detected boxes
+  // In edit-text mode show detected boxes as transparent overlays (no duplicate text)
   fabricCanvas.getObjects().forEach(obj => {
     if (obj.data?.type === 'detected') {
       obj.selectable = (tool === 'edit-text');
       obj.evented = (tool === 'edit-text');
       obj.set('borderColor', tool === 'edit-text' ? 'rgba(0,119,253,0.7)' : 'transparent');
-      obj.set('opacity', tool === 'edit-text' ? 1 : 0);
+      if (!obj.data.changed) {
+        obj.set({ opacity: tool === 'edit-text' ? 1 : 0, backgroundColor: 'transparent', fill: 'transparent' });
+      }
     }
   });
   fabricCanvas.renderAll();
@@ -2681,9 +2683,13 @@ function _reapplyToolModeToObjects() {
     if (obj.data?.type === 'detected') {
       obj.selectable = isEditText;
       obj.evented = isEditText;
-      obj.opacity = isEditText ? 1 : 0;
+      if (!obj.data.changed) {
+        obj.opacity = isEditText ? 1 : 0;
+        obj.backgroundColor = 'transparent';
+      }
     }
   });
+  fabricCanvas.requestRenderAll();
 }
 
 function _setupFabricEvents() {
@@ -2921,7 +2927,7 @@ function _addDetectedTextToCanvas(blocks, zoom) {
       left: x0 * zoom,
       top: y0 * zoom,
       fontSize: estFontSize,
-      fill: 'rgba(0,0,255,0.85)',
+      fill: 'transparent',
       fontFamily: 'Helvetica, Arial, sans-serif',
       backgroundColor: 'transparent',
       selectable: false,
@@ -2938,23 +2944,24 @@ function _addDetectedTextToCanvas(blocks, zoom) {
         changed: false
       }
     });
+    // Only show text when actually editing (double-click) — prevents duplicate text on top of PDF
+    itext.on('editing:entered', () => {
+      itext.set({ fill: '#111111', backgroundColor: 'rgba(255,255,255,0.97)' });
+      fabricCanvas.renderAll();
+    });
     itext.on('editing:exited', () => {
       const changed = itext.text !== itext.data.originalText;
       itext.data.changed = changed;
       itext.data.dirty = changed;
       if (changed) {
-        itext.set({ fill: '#000000', backgroundColor: '#ffffff', selectable: true, evented: true, opacity: 1 });
+        // White bg covers original PDF text; new text stays visible
+        itext.set({ fill: '#111111', backgroundColor: '#ffffff', selectable: true, evented: true, opacity: 1 });
       } else {
-        itext.set({ fill: 'rgba(0,0,255,0.85)', backgroundColor: 'transparent', opacity: pdfEditorTool === 'edit-text' ? 1 : 0 });
+        // Reset: transparent so PDF background text shows through
+        itext.set({ fill: 'transparent', backgroundColor: 'transparent', opacity: pdfEditorTool === 'edit-text' ? 1 : 0 });
       }
       fabricCanvas.renderAll();
       _countDirtyObjects();
-    });
-    itext.on('selected', () => {
-      if (!itext.data.changed) {
-        itext.set({ fill: '#000000', backgroundColor: '#ffffffee' });
-        fabricCanvas.renderAll();
-      }
     });
     fabricCanvas.add(itext);
   });
