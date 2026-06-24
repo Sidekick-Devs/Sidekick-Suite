@@ -458,6 +458,134 @@
       font-size: 12px;
       color: var(--text-secondary);
     }
+    .pdf-edit-shell {
+      display: grid;
+      grid-template-columns: 156px minmax(0, 1fr) 300px;
+      min-height: calc(100vh - 180px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--bg-secondary);
+    }
+    .pdf-edit-toolbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-primary);
+      min-height: 48px;
+    }
+    .pdf-edit-toolbar .spacer { flex: 1; }
+    .tool-btn {
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tool-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+    .tool-btn.active {
+      color: var(--accent-text);
+      background: var(--accent-light);
+      border-color: rgba(29,158,117,0.35);
+    }
+    .pdf-page-rail {
+      border-right: 1px solid var(--border);
+      background: var(--bg-primary);
+      overflow: auto;
+      padding: 12px 10px;
+    }
+    .pdf-page-thumb {
+      width: 112px;
+      margin: 0 auto 14px;
+      padding: 6px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-secondary);
+      text-align: center;
+      font-size: 12px;
+    }
+    .pdf-page-thumb:hover { background: var(--bg-secondary); }
+    .pdf-page-thumb.active {
+      border-color: var(--accent);
+      background: var(--accent-light);
+      color: var(--accent-text);
+      font-weight: 700;
+    }
+    .pdf-page-thumb canvas, .pdf-page-thumb img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: white;
+      margin-bottom: 6px;
+    }
+    .pdf-edit-workspace {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: #eef0f2;
+    }
+    [data-theme="dark"] .pdf-edit-workspace { background: #181615; }
+    .pdf-edit-stagebar {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .pdf-edit-sidepanel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 14px;
+      border-left: 1px solid var(--border);
+      background: var(--bg-primary);
+      overflow: auto;
+    }
+    .pdf-edit-panel-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
+      font-weight: 700;
+    }
+    .pdf-save-btn {
+      min-height: 52px;
+      width: 100%;
+      border: 0;
+      border-radius: var(--radius);
+      background: #ef2f2f;
+      color: white;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(239,47,47,0.25);
+    }
+    .pdf-save-btn:hover { filter: brightness(0.95); }
+    .pdf-zoom-btn {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .pdf-zoom-btn:hover { color: var(--text-primary); border-color: var(--border-hover); }
     .color-input-row {
       display: flex;
       gap: 8px;
@@ -687,6 +815,9 @@
       .nav-item span:not(.nav-icon) { display: none; }
       .grid-2, .grid-3, .grid-4, .check-grid, .stat-grid { grid-template-columns: 1fr 1fr; }
       .pdf-editor-layout, .reorder-preview-panel { grid-template-columns: 1fr; }
+      .pdf-edit-shell { grid-template-columns: 1fr; }
+      .pdf-page-rail { display: none; }
+      .pdf-edit-sidepanel { border-left: 0; border-top: 1px solid var(--border); }
     }
   </style>
 </head>
@@ -1242,33 +1373,37 @@
         <input type="file" id="pdf-edit-file" accept=".pdf" style="display:none" onchange="loadPdfEditorFile(this)">
 
         <div id="edit-info" style="display:none; flex-direction:column; gap:12px;">
-          <div class="alert alert-success" id="edit-info-text"></div>
-          <div class="pdf-editor-layout">
-            <div>
+          <div class="pdf-edit-shell">
+            <div class="pdf-edit-toolbar">
+              <button class="tool-btn active" data-edit-tool="replace" onclick="setPdfEditorTool('replace')">Edit text</button>
+              <button class="tool-btn" data-edit-tool="text" onclick="setPdfEditorTool('text')">Add text</button>
+              <button class="tool-btn" data-edit-tool="highlight" onclick="setPdfEditorTool('highlight')">Highlight</button>
+              <button class="tool-btn" data-edit-tool="rect" onclick="setPdfEditorTool('rect')">Shape</button>
+              <div class="spacer"></div>
+              <span id="edit-info-text" style="font-size:12px;color:var(--text-tertiary);"></span>
+            </div>
+            <aside class="pdf-page-rail" id="edit-page-rail"></aside>
+            <section class="pdf-edit-workspace">
+              <div class="pdf-edit-stagebar">
+                <button class="pdf-zoom-btn" onclick="stepPdfEditorPage(-1)" title="Trang trước">‹</button>
+                <span>Trang</span>
+                <input type="number" id="edit-page" min="1" value="1" oninput="renderPdfEditorPage()" style="width:64px;padding:5px 8px;text-align:center;">
+                <span id="edit-page-total">/ 1</span>
+                <button class="pdf-zoom-btn" onclick="stepPdfEditorPage(1)" title="Trang sau">›</button>
+                <button class="pdf-zoom-btn" onclick="zoomPdfEditor(-0.15)" title="Thu nhỏ">−</button>
+                <span id="edit-zoom-label">115%</span>
+                <button class="pdf-zoom-btn" onclick="zoomPdfEditor(0.15)" title="Phóng to">+</button>
+              </div>
               <div class="pdf-editor-stage" id="edit-stage">
                 <div class="reorder-preview-empty">Click vào preview để đặt vị trí edit.</div>
               </div>
-            </div>
-            <div class="pdf-editor-panel">
-              <div class="grid-2">
-                <div>
-                  <label class="field-label">Trang</label>
-                  <input type="number" id="edit-page" min="1" value="1" oninput="renderPdfEditorPage()">
-                </div>
-                <div>
-                  <label class="field-label">Công cụ</label>
-                  <select id="edit-tool" onchange="syncPdfEditorTool()">
-                    <option value="text">Text</option>
-                    <option value="replace">Replace text</option>
-                    <option value="highlight">Highlight</option>
-                    <option value="rect">Rectangle</option>
-                  </select>
-                </div>
-              </div>
-              <div class="alert alert-info" id="edit-selected-text">Chọn Replace text rồi click vào text trong preview.</div>
+            </section>
+            <aside class="pdf-edit-sidepanel">
+              <div class="pdf-edit-panel-title">Text styles</div>
+              <div class="alert alert-info" id="edit-selected-text">Chọn Edit text rồi click vào text trong preview.</div>
               <div id="edit-text-wrap">
                 <label class="field-label">Text</label>
-                <textarea id="edit-text" placeholder="Nội dung cần thêm..." style="min-height:74px;"></textarea>
+                <textarea id="edit-text" placeholder="Nội dung cần thêm..." style="min-height:110px;"></textarea>
               </div>
               <div class="grid-2">
                 <div>
@@ -1282,29 +1417,30 @@
               </div>
               <div class="grid-2">
                 <div>
-                  <label class="field-label">Font / height</label>
+                  <label class="field-label">Size</label>
                   <input type="number" id="edit-size" min="6" max="96" value="14" oninput="updatePdfEditorMarker()">
                 </div>
                 <div>
-                  <label class="field-label">Width</label>
+                  <label class="field-label">Width (%)</label>
                   <input type="number" id="edit-width" min="4" max="100" value="28" oninput="updatePdfEditorMarker()">
                 </div>
               </div>
               <div class="color-input-row">
                 <div style="flex:1;">
-                  <label class="field-label">Màu</label>
+                  <label class="field-label">Current color</label>
                   <input type="text" id="edit-color-text" value="#1D9E75" oninput="syncPdfEditorColor('text')">
                 </div>
                 <input type="color" id="edit-color" value="#1D9E75" oninput="syncPdfEditorColor('picker')">
               </div>
               <div class="btn-row">
-                <button class="btn primary" onclick="addPdfEditAction()">Thêm edit</button>
-                <button class="btn danger" onclick="clearPdfEditActions()">Xóa list</button>
+                <button class="btn primary" onclick="addPdfEditAction()">Apply edit</button>
+                <button class="btn danger" onclick="clearPdfEditActions()">Clear</button>
               </div>
+              <div class="pdf-edit-panel-title">Changes</div>
               <div class="pdf-editor-actions" id="edit-actions"></div>
               <div class="alert alert-info" id="edit-status">Text/shape sẽ được ghi lên PDF khi export.</div>
-              <button class="btn success" onclick="exportEditedPdf()" id="edit-btn">Tải PDF đã edit</button>
-            </div>
+              <button class="pdf-save-btn" onclick="exportEditedPdf()" id="edit-btn">Save changes</button>
+            </aside>
           </div>
         </div>
       </div>
@@ -2059,6 +2195,7 @@ let pdfEditorJsDoc = null;
 let pdfEditorActions = [];
 let pdfEditorPageTextItems = [];
 let pdfEditorSelectedText = null;
+let pdfEditorZoom = 1.15;
 const PDF_API_BASE = localStorage.getItem('sidekickPdfApiBase') || 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 let reorderPageOrder = [];
 let reorderDragIndex = null;
@@ -2158,11 +2295,36 @@ function syncPdfEditorColor(source) {
   if (source === 'picker') text.value = picker.value;
   else if (/^#[0-9a-f]{6}$/i.test(text.value.trim())) picker.value = text.value.trim();
 }
+function setPdfEditorTool(tool) {
+  const select = document.getElementById('edit-tool');
+  if (select) select.value = tool;
+  syncPdfEditorTool();
+}
 function syncPdfEditorTool() {
-  const tool = document.getElementById('edit-tool').value;
+  const select = document.getElementById('edit-tool');
+  const activeBtn = document.querySelector('.tool-btn.active');
+  const tool = select ? select.value : (activeBtn ? activeBtn.dataset.editTool : 'replace');
   document.getElementById('edit-text-wrap').style.display = (tool === 'text' || tool === 'replace') ? 'block' : 'none';
   document.getElementById('edit-selected-text').style.display = tool === 'replace' ? 'block' : 'none';
+  document.querySelectorAll('.tool-btn[data-edit-tool]').forEach(btn => btn.classList.toggle('active', btn.dataset.editTool === tool));
   updatePdfEditorMarker();
+}
+function getPdfEditorTool() {
+  const activeBtn = document.querySelector('.tool-btn.active');
+  return activeBtn ? activeBtn.dataset.editTool : 'replace';
+}
+function stepPdfEditorPage(delta) {
+  if (!pdfEditorJsDoc) return;
+  const pageInput = document.getElementById('edit-page');
+  const current = parseInt(pageInput.value || '1', 10);
+  pageInput.value = Math.max(1, Math.min(pdfEditorJsDoc.numPages, current + delta));
+  renderPdfEditorPage();
+}
+function zoomPdfEditor(delta) {
+  pdfEditorZoom = Math.max(0.55, Math.min(2.4, pdfEditorZoom + delta));
+  const label = document.getElementById('edit-zoom-label');
+  if (label) label.textContent = `${Math.round(pdfEditorZoom * 100)}%`;
+  renderPdfEditorPage();
 }
 function updatePdfEditorMarker() {
   const wrap = document.querySelector('#edit-stage .pdf-editor-canvas-wrap');
@@ -2173,7 +2335,7 @@ function updatePdfEditorMarker() {
     marker.className = 'pdf-editor-marker';
     wrap.appendChild(marker);
   }
-  const tool = document.getElementById('edit-tool').value;
+  const tool = getPdfEditorTool();
   const x = Math.max(0, Math.min(100, parseFloat(document.getElementById('edit-x').value || '0')));
   const y = Math.max(0, Math.min(100, parseFloat(document.getElementById('edit-y').value || '0')));
   const size = Math.max(4, parseFloat(document.getElementById('edit-size').value || '14'));
@@ -2192,7 +2354,7 @@ function selectPdfEditorText(index) {
   document.querySelectorAll('#edit-stage .pdf-text-hit').forEach(el => el.classList.remove('selected'));
   const hit = document.querySelector(`#edit-stage .pdf-text-hit[data-index="${index}"]`);
   if (hit) hit.classList.add('selected');
-  document.getElementById('edit-tool').value = 'replace';
+  setPdfEditorTool('replace');
   document.getElementById('edit-text').value = item.text;
   document.getElementById('edit-page').value = item.page;
   document.getElementById('edit-x').value = item.xPct.toFixed(1);
@@ -2202,6 +2364,47 @@ function selectPdfEditorText(index) {
   document.getElementById('edit-selected-text').textContent = `Đang chọn: "${item.text.slice(0, 90)}"`;
   syncPdfEditorTool();
 }
+async function renderPdfEditorThumbnails() {
+  const rail = document.getElementById('edit-page-rail');
+  if (!rail || !pdfEditorJsDoc) return;
+  rail.innerHTML = '';
+  for (let pageNumber = 1; pageNumber <= pdfEditorJsDoc.numPages; pageNumber++) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'pdf-page-thumb';
+    item.dataset.page = String(pageNumber);
+    item.innerHTML = `<div class="reorder-thumb-placeholder">Trang ${pageNumber}</div><div>${pageNumber}</div>`;
+    item.addEventListener('click', () => {
+      document.getElementById('edit-page').value = String(pageNumber);
+      renderPdfEditorPage();
+    });
+    rail.appendChild(item);
+    try {
+      const page = await pdfEditorJsDoc.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 0.18 });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) continue;
+      await page.render({ canvasContext: ctx, viewport, background: 'rgb(255,255,255)' }).promise;
+      item.innerHTML = '';
+      item.appendChild(canvas);
+      const label = document.createElement('div');
+      label.textContent = String(pageNumber);
+      item.appendChild(label);
+    } catch (error) {
+      item.querySelector('.reorder-thumb-placeholder').textContent = `Trang ${pageNumber}`;
+    }
+  }
+  updatePdfEditorThumbSelection();
+}
+function updatePdfEditorThumbSelection() {
+  const current = document.getElementById('edit-page') ? document.getElementById('edit-page').value : '1';
+  document.querySelectorAll('#edit-page-rail .pdf-page-thumb').forEach(item => {
+    item.classList.toggle('active', item.dataset.page === current);
+  });
+}
 async function renderPdfEditorPage() {
   if (!pdfEditorJsDoc) return;
   pdfEditorSelectedText = null;
@@ -2209,11 +2412,14 @@ async function renderPdfEditorPage() {
   const pageInput = document.getElementById('edit-page');
   const pageNumber = Math.max(1, Math.min(pdfEditorJsDoc.numPages, parseInt(pageInput.value || '1', 10)));
   pageInput.value = pageNumber;
+  const totalEl = document.getElementById('edit-page-total');
+  if (totalEl) totalEl.textContent = `/ ${pdfEditorJsDoc.numPages}`;
+  updatePdfEditorThumbSelection();
   const stage = document.getElementById('edit-stage');
   stage.innerHTML = '<div class="reorder-preview-empty">Đang render preview...</div>';
   try {
     const page = await pdfEditorJsDoc.getPage(pageNumber);
-    const editorScale = 1.15;
+    const editorScale = pdfEditorZoom;
     const viewport = page.getViewport({ scale: editorScale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(viewport.width);
@@ -2313,7 +2519,7 @@ function buildPdfReplaceRect(selectedText) {
 }
 function addPdfEditAction() {
   if (!pdfEditorDoc) { alert('Chưa chọn file PDF'); return; }
-  const tool = document.getElementById('edit-tool').value;
+  const tool = getPdfEditorTool();
   const text = document.getElementById('edit-text').value;
   if ((tool === 'text' || tool === 'replace') && !text.trim()) { alert('Nhập text cần thêm'); return; }
   if (tool === 'replace' && (!pdfEditorSelectedText || pdfEditorSelectedText.page !== parseInt(document.getElementById('edit-page').value || '1', 10))) {
@@ -2361,11 +2567,14 @@ async function loadPdfEditorFile(input) {
     pdfEditorJsDoc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
     document.getElementById('edit-page').max = String(pdfEditorDoc.getPageCount());
     document.getElementById('edit-page').value = '1';
+    document.getElementById('edit-page-total').textContent = `/ ${pdfEditorDoc.getPageCount()}`;
     document.getElementById('edit-info-text').textContent = `📄 ${f.name} — ${pdfEditorDoc.getPageCount()} trang, ${(f.size/1024).toFixed(0)} KB`;
     renderPdfEditActions();
+    await renderPdfEditorThumbnails();
+    setPdfEditorTool('replace');
     syncPdfEditorTool();
     await renderPdfEditorPage();
-    statusEl.textContent = 'Click lên preview để chọn vị trí, thêm edit rồi export.';
+    statusEl.textContent = 'Click text trên trang để sửa, hoặc chọn công cụ khác trên toolbar.';
   } catch (e) {
     pdfEditorFile = null;
     pdfEditorDoc = null;
