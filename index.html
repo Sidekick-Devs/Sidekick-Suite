@@ -418,21 +418,37 @@
     }
     .pdf-text-hit {
       position: absolute;
-      border: 1px solid transparent;
-      background: transparent;
+      border: 1px dashed rgba(0,119,253,0.62);
+      background: rgba(0,119,253,0.06);
       padding: 0;
       margin: 0;
       appearance: none;
       cursor: text;
       line-height: 1;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.12s;
+    }
+    #edit-stage[data-tool="replace"] .pdf-text-hit {
+      opacity: 1;
+      pointer-events: auto;
     }
     .pdf-text-hit:hover {
-      border-color: rgba(29,158,117,0.65);
-      background: rgba(29,158,117,0.12);
+      border-color: rgba(0,119,253,0.95);
+      background: rgba(0,119,253,0.14);
     }
     .pdf-text-hit.selected {
       border-color: var(--accent);
       background: rgba(29,158,117,0.2);
+      box-shadow: 0 0 0 2px rgba(29,158,117,0.2);
+    }
+    .pdf-text-hit span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      color: transparent;
+      user-select: none;
     }
     .pdf-editor-panel {
       display: flex;
@@ -1400,7 +1416,7 @@
             </section>
             <aside class="pdf-edit-sidepanel">
               <div class="pdf-edit-panel-title">Text styles</div>
-              <div class="alert alert-info" id="edit-selected-text">Chọn Edit text rồi click vào text trong preview.</div>
+              <div class="alert alert-info" id="edit-selected-text">Các text trong trang sẽ hiện thành textbox. Click vào box cần sửa.</div>
               <div id="edit-text-wrap">
                 <label class="field-label">Text</label>
                 <textarea id="edit-text" placeholder="Nội dung cần thêm..." style="min-height:110px;"></textarea>
@@ -2196,6 +2212,7 @@ let pdfEditorActions = [];
 let pdfEditorPageTextItems = [];
 let pdfEditorSelectedText = null;
 let pdfEditorZoom = 1.15;
+let pdfEditorTool = 'replace';
 const PDF_API_BASE = localStorage.getItem('sidekickPdfApiBase') || 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 let reorderPageOrder = [];
 let reorderDragIndex = null;
@@ -2296,22 +2313,20 @@ function syncPdfEditorColor(source) {
   else if (/^#[0-9a-f]{6}$/i.test(text.value.trim())) picker.value = text.value.trim();
 }
 function setPdfEditorTool(tool) {
-  const select = document.getElementById('edit-tool');
-  if (select) select.value = tool;
+  pdfEditorTool = tool;
   syncPdfEditorTool();
 }
 function syncPdfEditorTool() {
-  const select = document.getElementById('edit-tool');
-  const activeBtn = document.querySelector('.tool-btn.active');
-  const tool = select ? select.value : (activeBtn ? activeBtn.dataset.editTool : 'replace');
+  const tool = pdfEditorTool || 'replace';
   document.getElementById('edit-text-wrap').style.display = (tool === 'text' || tool === 'replace') ? 'block' : 'none';
   document.getElementById('edit-selected-text').style.display = tool === 'replace' ? 'block' : 'none';
   document.querySelectorAll('.tool-btn[data-edit-tool]').forEach(btn => btn.classList.toggle('active', btn.dataset.editTool === tool));
+  const stage = document.getElementById('edit-stage');
+  if (stage) stage.dataset.tool = tool;
   updatePdfEditorMarker();
 }
 function getPdfEditorTool() {
-  const activeBtn = document.querySelector('.tool-btn.active');
-  return activeBtn ? activeBtn.dataset.editTool : 'replace';
+  return pdfEditorTool || 'replace';
 }
 function stepPdfEditorPage(delta) {
   if (!pdfEditorJsDoc) return;
@@ -2361,7 +2376,7 @@ function selectPdfEditorText(index) {
   document.getElementById('edit-y').value = item.yPct.toFixed(1);
   document.getElementById('edit-size').value = Math.max(9, Math.round(item.height * 1.25));
   document.getElementById('edit-width').value = Math.max(8, item.widthPct * 1.3).toFixed(1);
-  document.getElementById('edit-selected-text').textContent = `Đang chọn: "${item.text.slice(0, 90)}"`;
+  document.getElementById('edit-selected-text').textContent = `Đang chọn textbox: "${item.text.slice(0, 90)}"`;
   syncPdfEditorTool();
 }
 async function renderPdfEditorThumbnails() {
@@ -2469,6 +2484,7 @@ async function renderPdfEditorPage() {
       hit.style.top = `${item.top}px`;
       hit.style.width = `${item.widthPx}px`;
       hit.style.height = `${item.heightPx}px`;
+      hit.innerHTML = `<span>${escapeXml(item.text)}</span>`;
       hit.addEventListener('click', event => {
         event.stopPropagation();
         selectPdfEditorText(index);
@@ -2483,7 +2499,7 @@ async function renderPdfEditorPage() {
     });
     stage.innerHTML = '';
     stage.appendChild(wrap);
-    document.getElementById('edit-selected-text').textContent = 'Chọn Replace text rồi click vào text trong preview.';
+    document.getElementById('edit-selected-text').textContent = `Đã detect ${pdfEditorPageTextItems.length} textbox trên trang này. Click box cần sửa.`;
     updatePdfEditorMarker();
   } catch (e) {
     stage.innerHTML = `<div class="reorder-preview-empty">Không render được preview: ${escapeXml(e.message)}</div>`;
