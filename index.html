@@ -2959,7 +2959,7 @@ function _addDetectedTextToCanvas(blocks, zoom) {
     const blockH = y1 - y0;
     const lineCount = Math.max(1, (block.text.match(/\n/g) || []).length + 1);
     const estFontSize = Math.max(7, Math.min(42, (blockH / lineCount) * 0.72)) * zoom;
-    const text = (block.text || '').replace(/\n/g, ' ').trim();
+    const text = (block.text || '').normalize('NFC').replace(/\n/g, ' ').trim();
     const itext = new fabric.IText(text, {
       left: x0 * zoom,
       top: y0 * zoom,
@@ -2987,7 +2987,7 @@ function _addDetectedTextToCanvas(blocks, zoom) {
       fabricCanvas.renderAll();
     });
     itext.on('editing:exited', () => {
-      const changed = itext.text !== itext.data.originalText;
+      const changed = itext.text.normalize('NFC') !== itext.data.originalText.normalize('NFC');
       itext.data.changed = changed;
       itext.data.dirty = changed;
       if (changed) {

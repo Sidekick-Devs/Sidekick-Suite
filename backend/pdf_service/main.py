@@ -59,6 +59,21 @@ def _resolve_font(family: str | None, bold: bool, italic: bool) -> tuple[str, st
         return ("sidekick" if ffile else "helv"), ffile
     variants = _FONT_VARIANTS.get(fam, _FONT_VARIANTS["helv"])
     return variants.get(key, variants[""]), None
+
+
+def _needs_unicode_font(text: str) -> bool:
+    """Return True if text has characters outside WinAnsi (>U+00FF) like Vietnamese."""
+    return any(ord(c) > 0xFF for c in text)
+
+
+def _resolve_font_for_text(family: str | None, bold: bool, italic: bool, text: str) -> tuple[str, str | None]:
+    """Like _resolve_font but auto-upgrades to NotoSans when text needs Unicode support."""
+    font_name, font_file = _resolve_font(family, bold, italic)
+    if _needs_unicode_font(text) and font_name != "sidekick":
+        noto = Path(FONT_PATH)
+        if noto.exists():
+            return "sidekick", str(noto)
+    return font_name, font_file
 TESSERACT_LANG = os.getenv("TESSERACT_LANG", "eng+vie")
 BUCKET_NAME = os.getenv("GCS_BUCKET", "sidekick-pdf-uploads")
 GS_QUALITY_MAP = {
@@ -337,7 +352,6 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
         bold = bool(action.get("bold", False))
         italic = bool(action.get("italic", False))
         font_family = action.get("fontFamily") or "helv"
-        font_name, font_file = _resolve_font(font_family, bold, italic)
         align = _ALIGN_MAP.get(str(action.get("textAlign", "left")), 0)
 
         if tool == "replace":
@@ -346,6 +360,7 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
             page.add_redact_annot(_expand_rect(original_rect, -1, -3, 3, 4), fill=(1, 1, 1))
             page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
             text = str(action.get("text", ""))
+            font_name, font_file = _resolve_font_for_text(font_family, bold, italic, text)
             font_size = float(action.get("size") or max(9, rect.height * 0.75))
             text_rect = _expand_rect(
                 rect,
@@ -362,6 +377,7 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
 
         elif tool == "text":
             text = str(action.get("text", ""))
+            font_name, font_file = _resolve_font_for_text(font_family, bold, italic, text)
             font_size = float(action.get("size") or 14)
             page.insert_textbox(
                 _expand_rect(rect, 0, -font_size * 0.45, max(rect.width * 0.2, font_size * 2), max(rect.height * 0.65, font_size)),
