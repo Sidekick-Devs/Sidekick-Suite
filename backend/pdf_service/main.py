@@ -263,6 +263,20 @@ def _action_rect(page: fitz.Page, action: dict[str, Any]) -> fitz.Rect:
     return fitz.Rect(x, y, min(page_width, x + page_width * width_pct), min(page_height, y + size * 1.6))
 
 
+def _original_rect_from_action(page: fitz.Page, action: dict[str, Any], fallback: fitz.Rect) -> fitz.Rect:
+    rect = action.get("rect") or {}
+    if not rect:
+        return fallback
+    page_height = page.rect.height
+    x = float(rect.get("x", fallback.x0))
+    width = float(rect.get("originalWidth") or rect.get("width") or fallback.width)
+    height = float(rect.get("originalHeight") or rect.get("height") or fallback.height)
+    y = float(rect.get("y", page_height - fallback.y1))
+    replacement_height = float(rect.get("height") or fallback.height)
+    original_y = y + replacement_height - height
+    return fitz.Rect(x, page_height - original_y - height, x + width, page_height - original_y)
+
+
 def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
     pdf = fitz.open(stream=data, filetype="pdf")
     font_path = FONT_PATH if Path(FONT_PATH).exists() else None
@@ -278,12 +292,20 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
         rect = _action_rect(page, action)
 
         if tool == "replace":
-            page.add_redact_annot(_expand_rect(rect, -1, -2, 3, 3), fill=(1, 1, 1))
+            original_rect = _original_rect_from_action(page, action, rect)
+            page.add_redact_annot(_expand_rect(original_rect, -1, -3, 3, 4), fill=(1, 1, 1))
             page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
             text = str(action.get("text", ""))
             font_size = float(action.get("size") or max(9, rect.height * 0.75))
+            text_rect = _expand_rect(
+                rect,
+                0,
+                -font_size * 0.45,
+                max(rect.width * 0.25, font_size * 2),
+                max(rect.height * 0.65, font_size),
+            )
             page.insert_textbox(
-                _expand_rect(rect, 0, -2, max(rect.width * 0.3, 16), max(rect.height * 0.8, 10)),
+                text_rect,
                 text,
                 fontsize=font_size,
                 fontname=font_name,
@@ -295,7 +317,7 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
             text = str(action.get("text", ""))
             font_size = float(action.get("size") or 14)
             page.insert_textbox(
-                rect,
+                _expand_rect(rect, 0, -font_size * 0.45, max(rect.width * 0.2, font_size * 2), max(rect.height * 0.65, font_size)),
                 text,
                 fontsize=font_size,
                 fontname=font_name,
@@ -443,7 +465,7 @@ async def analyze_text(file: UploadFile = File(...), pages: str | None = Form(No
 async def edit_text(file: UploadFile = File(...), actions: str = Form("[]")) -> StreamingResponse:
     data = _read_pdf(file)
     try:
-        parsed_actions = json.loads(actions)
+        parsed_actions = json.loads(actions.lstrip("\ufeff"))
         if not isinstance(parsed_actions, list):
             raise ValueError("actions must be a list")
     except ValueError as exc:
