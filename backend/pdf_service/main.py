@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import os
@@ -39,6 +40,25 @@ app.add_middleware(
 )
 
 FONT_PATH = os.getenv("PDF_FONT_PATH", "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf")
+
+# Standard PDF built-in font variants: base → (normal, bold, italic, bold-italic)
+_FONT_VARIANTS: dict[str, dict[str, str]] = {
+    "helv": {"": "helv", "b": "hebo", "i": "heit", "bi": "hebi"},
+    "tiro": {"": "tiro", "b": "tibo", "i": "tiit", "bi": "tibi"},
+    "cour": {"": "cour", "b": "cobo", "i": "coit", "bi": "cobi"},
+}
+_ALIGN_MAP = {"left": 0, "center": 1, "right": 2, "justify": 3}
+
+
+def _resolve_font(family: str | None, bold: bool, italic: bool) -> tuple[str, str | None]:
+    """Return (fontname, fontfile) for PyMuPDF insert_textbox."""
+    fam = (family or "helv").lower()
+    key = ("b" if bold else "") + ("i" if italic else "")
+    if fam == "noto":
+        ffile = FONT_PATH if Path(FONT_PATH).exists() else None
+        return ("sidekick" if ffile else "helv"), ffile
+    variants = _FONT_VARIANTS.get(fam, _FONT_VARIANTS["helv"])
+    return variants.get(key, variants[""]), None
 TESSERACT_LANG = os.getenv("TESSERACT_LANG", "eng+vie")
 BUCKET_NAME = os.getenv("GCS_BUCKET", "sidekick-pdf-uploads")
 GS_QUALITY_MAP = {
@@ -244,16 +264,33 @@ def _docx_from_layout(data: bytes, page_indexes: list[int]) -> bytes:
 
 
 def _action_rect(page: fitz.Page, action: dict[str, Any]) -> fitz.Rect:
+    """Resolve the bounding rect for an action.
+
+    New Fabric-based actions carry absolute PDF coordinates:
+      pdfX / pdfY (Y from top, PyMuPDF style) / pdfWidth / pdfHeight
+    Legacy actions use rect.{x,y,width,height} with y-from-bottom, or xPct/yPct.
+    """
     page_width = page.rect.width
     page_height = page.rect.height
+
+    # New coordinate format from Fabric.js (Y from top)
+    if "pdfX" in action:
+        x = float(action["pdfX"])
+        y = float(action["pdfY"])          # Y from top
+        w = float(action["pdfWidth"])
+        h = float(action["pdfHeight"])
+        return fitz.Rect(x, y, x + w, y + h)
+
+    # Legacy rect format (Y from bottom)
     rect = action.get("rect")
     if rect:
         x = float(rect.get("x", 0))
-        y = float(rect.get("y", 0))
+        y = float(rect.get("y", 0))        # Y from bottom
         width = float(rect.get("width", 0))
         height = float(rect.get("height", 0))
         return fitz.Rect(x, page_height - y - height, x + width, page_height - y)
 
+    # Legacy percent format
     x_pct = float(action.get("xPct", 0)) / 100
     y_pct = float(action.get("yPct", 0)) / 100
     width_pct = float(action.get("widthPct", 25)) / 100
@@ -264,6 +301,12 @@ def _action_rect(page: fitz.Page, action: dict[str, Any]) -> fitz.Rect:
 
 
 def _original_rect_from_action(page: fitz.Page, action: dict[str, Any], fallback: fitz.Rect) -> fitz.Rect:
+    # New Fabric format: originalRect is [x0, y0, x1, y1] in PyMuPDF (Y from top)
+    orig = action.get("originalRect")
+    if orig and isinstance(orig, (list, tuple)) and len(orig) == 4:
+        return fitz.Rect(float(orig[0]), float(orig[1]), float(orig[2]), float(orig[3]))
+
+    # Legacy format: rect dict with y from bottom
     rect = action.get("rect") or {}
     if not rect:
         return fallback
@@ -279,19 +322,25 @@ def _original_rect_from_action(page: fitz.Page, action: dict[str, Any], fallback
 
 def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
     pdf = fitz.open(stream=data, filetype="pdf")
-    font_path = FONT_PATH if Path(FONT_PATH).exists() else None
-    font_name = "sidekick" if font_path else "helv"
 
     for action in actions:
         page_index = int(action.get("page", 1)) - 1
         if page_index < 0 or page_index >= pdf.page_count:
             continue
         page = pdf[page_index]
-        tool = action.get("tool")
+        tool = action.get("tool", "")
         color = _hex_to_rgb01(action.get("color"))
+        opacity = float(action.get("opacity", 1.0))
         rect = _action_rect(page, action)
 
+        bold = bool(action.get("bold", False))
+        italic = bool(action.get("italic", False))
+        font_family = action.get("fontFamily") or "helv"
+        font_name, font_file = _resolve_font(font_family, bold, italic)
+        align = _ALIGN_MAP.get(str(action.get("textAlign", "left")), 0)
+
         if tool == "replace":
+            # Whiteout original text region then draw new text
             original_rect = _original_rect_from_action(page, action, rect)
             page.add_redact_annot(_expand_rect(original_rect, -1, -3, 3, 4), fill=(1, 1, 1))
             page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
@@ -305,33 +354,57 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
                 max(rect.height * 0.65, font_size),
             )
             page.insert_textbox(
-                text_rect,
-                text,
-                fontsize=font_size,
-                fontname=font_name,
-                fontfile=font_path,
-                color=color,
-                align=fitz.TEXT_ALIGN_LEFT,
+                text_rect, text,
+                fontsize=font_size, fontname=font_name, fontfile=font_file,
+                color=color, align=align,
             )
+
         elif tool == "text":
             text = str(action.get("text", ""))
             font_size = float(action.get("size") or 14)
             page.insert_textbox(
                 _expand_rect(rect, 0, -font_size * 0.45, max(rect.width * 0.2, font_size * 2), max(rect.height * 0.65, font_size)),
                 text,
-                fontsize=font_size,
-                fontname=font_name,
-                fontfile=font_path,
-                color=color,
-                align=fitz.TEXT_ALIGN_LEFT,
+                fontsize=font_size, fontname=font_name, fontfile=font_file,
+                color=color, align=align,
             )
+
+        elif tool == "whiteout":
+            page.draw_rect(rect, color=(1, 1, 1), fill=(1, 1, 1), width=0)
+
         elif tool == "highlight":
             annot = page.add_highlight_annot(rect)
             annot.set_colors(stroke=color)
-            annot.set_opacity(0.35)
+            annot.set_opacity(min(1.0, opacity * 0.5))
             annot.update()
+
         elif tool == "rect":
-            page.draw_rect(rect, color=color, width=1.5, fill=None)
+            stroke = color if action.get("stroke", True) else None
+            fill_color = _hex_to_rgb01(action.get("fillColor")) if action.get("fillColor") else None
+            page.draw_rect(rect, color=stroke, fill=fill_color, width=float(action.get("strokeWidth", 1.5)))
+
+        elif tool == "image":
+            img_b64 = action.get("imageDataUrl", "")
+            if img_b64:
+                if "," in img_b64:
+                    img_b64 = img_b64.split(",", 1)[1]
+                try:
+                    img_bytes = base64.b64decode(img_b64)
+                    page.insert_image(rect, stream=img_bytes, keep_proportion=True)
+                except Exception:
+                    pass
+
+        elif tool == "draw":
+            # Freehand drawing exported as a PNG overlay
+            img_b64 = action.get("imageDataUrl", "")
+            if img_b64:
+                if "," in img_b64:
+                    img_b64 = img_b64.split(",", 1)[1]
+                try:
+                    img_bytes = base64.b64decode(img_b64)
+                    page.insert_image(rect, stream=img_bytes, keep_proportion=False)
+                except Exception:
+                    pass
 
     out = pdf.tobytes(garbage=4, deflate=True)
     pdf.close()

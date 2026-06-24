@@ -6,6 +6,7 @@
   <title>Sidekick Suites</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
   <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
@@ -387,68 +388,28 @@
       align-items: start;
     }
     .pdf-editor-stage {
+      flex: 1;
       min-height: 460px;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 12px;
+      background: #d8d8d8;
+      padding: 20px;
       overflow: auto;
     }
+    [data-theme="dark"] .pdf-editor-stage { background: #111; }
     .pdf-editor-canvas-wrap {
       position: relative;
-      max-width: 100%;
+      flex-shrink: 0;
       line-height: 0;
-      background: white;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.22);
     }
-    .pdf-editor-canvas-wrap canvas {
-      max-width: 100%;
-      height: auto;
-      display: block;
-    }
-    .pdf-editor-marker {
-      position: absolute;
-      border: 2px solid var(--accent);
-      background: rgba(29,158,117,0.18);
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-    }
-    .pdf-text-hit {
-      position: absolute;
-      border: 1px dashed rgba(0,119,253,0.62);
-      background: rgba(0,119,253,0.06);
-      padding: 0;
-      margin: 0;
-      appearance: none;
-      cursor: text;
-      line-height: 1;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.12s;
-    }
-    #edit-stage[data-tool="replace"] .pdf-text-hit {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .pdf-text-hit:hover {
-      border-color: rgba(0,119,253,0.95);
-      background: rgba(0,119,253,0.14);
-    }
-    .pdf-text-hit.selected {
-      border-color: var(--accent);
-      background: rgba(29,158,117,0.2);
-      box-shadow: 0 0 0 2px rgba(29,158,117,0.2);
-    }
-    .pdf-text-hit span {
-      display: block;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      color: transparent;
-      user-select: none;
+    .pdf-editor-canvas-wrap canvas { display: block; }
+    /* Fabric.js canvas container must not shrink or offset */
+    .pdf-editor-canvas-wrap .canvas-container {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
     }
     .pdf-editor-panel {
       display: flex;
@@ -476,7 +437,7 @@
     }
     .pdf-edit-shell {
       display: grid;
-      grid-template-columns: 156px minmax(0, 1fr) 300px;
+      grid-template-columns: 148px minmax(0, 1fr) 310px;
       min-height: calc(100vh - 180px);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
@@ -487,30 +448,68 @@
       grid-column: 1 / -1;
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
+      gap: 4px;
+      padding: 6px 10px;
       border-bottom: 1px solid var(--border);
       background: var(--bg-primary);
-      min-height: 48px;
+      min-height: 46px;
+      flex-wrap: wrap;
     }
     .pdf-edit-toolbar .spacer { flex: 1; }
+    .tool-sep {
+      width: 1px;
+      height: 22px;
+      background: var(--border);
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
     .tool-btn {
-      height: 32px;
-      padding: 0 10px;
-      border: 1px solid var(--border);
+      height: 30px;
+      padding: 0 9px;
+      border: 1px solid transparent;
       border-radius: var(--radius);
       background: transparent;
       color: var(--text-secondary);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
+      white-space: nowrap;
     }
-    .tool-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+    .tool-btn:hover { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border); }
     .tool-btn.active {
       color: var(--accent-text);
       background: var(--accent-light);
       border-color: rgba(29,158,117,0.35);
     }
+    /* Format buttons (B/I/U and alignment) */
+    .fmt-btn-row { display: flex; gap: 2px; }
+    .fmt-btn {
+      width: 30px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fmt-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+    .fmt-btn.active { color: var(--accent-text); background: var(--accent-light); border-color: rgba(29,158,117,0.35); }
+    /* Property panel sections */
+    .prop-section { display: flex; flex-direction: column; gap: 8px; }
+    .prop-row { display: flex; gap: 6px; align-items: center; }
+    .prop-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 2px;
+    }
+    .opacity-row { display: flex; gap: 8px; align-items: center; }
+    .opacity-row input[type=range] { flex: 1; }
+    .opacity-val { font-size: 12px; color: var(--text-secondary); min-width: 32px; text-align: right; }
     .pdf-page-rail {
       border-right: 1px solid var(--border);
       background: var(--bg-primary);
@@ -548,36 +547,41 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      background: #eef0f2;
+      overflow: hidden;
     }
-    [data-theme="dark"] .pdf-edit-workspace { background: #181615; }
     .pdf-edit-stagebar {
-      height: 40px;
+      height: 38px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       border-bottom: 1px solid var(--border);
-      background: var(--bg-secondary);
+      background: var(--bg-primary);
       color: var(--text-secondary);
       font-size: 12px;
       flex-shrink: 0;
+      padding: 0 10px;
     }
     .pdf-edit-sidepanel {
       display: flex;
       flex-direction: column;
-      gap: 14px;
-      padding: 14px;
+      gap: 12px;
+      padding: 12px;
       border-left: 1px solid var(--border);
       background: var(--bg-primary);
       overflow: auto;
     }
     .pdf-edit-panel-title {
-      font-size: 12px;
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       color: var(--text-tertiary);
       font-weight: 700;
+    }
+    .panel-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 2px 0;
     }
     .pdf-save-btn {
       min-height: 52px;
@@ -1387,76 +1391,154 @@
           <div class="drop-icon">&#9998;</div>Chọn file PDF cần edit
         </div>
         <input type="file" id="pdf-edit-file" accept=".pdf" style="display:none" onchange="loadPdfEditorFile(this)">
+        <input type="file" id="pdf-edit-image-file" accept="image/*" style="display:none" onchange="insertImageToPdf(this)">
 
-        <div id="edit-info" style="display:none; flex-direction:column; gap:12px;">
+        <div id="edit-info" style="display:none; flex-direction:column; gap:0;">
           <div class="pdf-edit-shell">
+
+            <!-- ── Toolbar (full-width top row) ── -->
             <div class="pdf-edit-toolbar">
-              <button class="tool-btn active" data-edit-tool="replace" onclick="setPdfEditorTool('replace')">Edit text</button>
-              <button class="tool-btn" data-edit-tool="text" onclick="setPdfEditorTool('text')">Add text</button>
-              <button class="tool-btn" data-edit-tool="highlight" onclick="setPdfEditorTool('highlight')">Highlight</button>
-              <button class="tool-btn" data-edit-tool="rect" onclick="setPdfEditorTool('rect')">Shape</button>
+              <!-- Selection -->
+              <button class="tool-btn" data-edit-tool="select" onclick="setPdfEditorTool('select')" title="Select / Move (V)">↖ Select</button>
+              <div class="tool-sep"></div>
+              <!-- Text tools -->
+              <button class="tool-btn active" data-edit-tool="edit-text" onclick="setPdfEditorTool('edit-text')" title="Edit existing text (E)">T↻ Edit Text</button>
+              <button class="tool-btn" data-edit-tool="add-text" onclick="setPdfEditorTool('add-text')" title="Add new text (T)">T+ Add Text</button>
+              <div class="tool-sep"></div>
+              <!-- Annotation tools -->
+              <button class="tool-btn" data-edit-tool="highlight" onclick="setPdfEditorTool('highlight')" title="Highlight (H)">▬ Highlight</button>
+              <button class="tool-btn" data-edit-tool="whiteout" onclick="setPdfEditorTool('whiteout')" title="Whiteout / Eraser (W)">◻ Whiteout</button>
+              <button class="tool-btn" data-edit-tool="rect" onclick="setPdfEditorTool('rect')" title="Rectangle (R)">□ Rect</button>
+              <div class="tool-sep"></div>
+              <!-- Draw & Image -->
+              <button class="tool-btn" data-edit-tool="draw" onclick="setPdfEditorTool('draw')" title="Freehand draw (D)">✎ Draw</button>
+              <button class="tool-btn" data-edit-tool="image" onclick="document.getElementById('pdf-edit-image-file').click()" title="Insert image (I)">🖼 Image</button>
               <div class="spacer"></div>
-              <span id="edit-info-text" style="font-size:12px;color:var(--text-tertiary);"></span>
+              <!-- Actions -->
+              <button class="tool-btn" onclick="undoPdfEdit()" title="Undo (Ctrl+Z)">↩ Undo</button>
+              <button class="tool-btn" onclick="redoPdfEdit()" title="Redo (Ctrl+Y)">↪ Redo</button>
+              <button class="tool-btn" onclick="deleteSelectedFabricObj()" title="Delete selected (Del)">🗑</button>
+              <div class="tool-sep"></div>
+              <span id="edit-info-text" style="font-size:11px;color:var(--text-tertiary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
             </div>
+
+            <!-- ── Left: page rail ── -->
             <aside class="pdf-page-rail" id="edit-page-rail"></aside>
+
+            <!-- ── Center: canvas workspace ── -->
             <section class="pdf-edit-workspace">
               <div class="pdf-edit-stagebar">
                 <button class="pdf-zoom-btn" onclick="stepPdfEditorPage(-1)" title="Trang trước">‹</button>
                 <span>Trang</span>
-                <input type="number" id="edit-page" min="1" value="1" oninput="renderPdfEditorPage()" style="width:64px;padding:5px 8px;text-align:center;">
-                <span id="edit-page-total">/ 1</span>
+                <input type="number" id="edit-page" min="1" value="1" oninput="onEditPageInput()" style="width:56px;padding:4px 6px;text-align:center;">
+                <span id="edit-page-total" style="color:var(--text-tertiary);">/ 1</span>
                 <button class="pdf-zoom-btn" onclick="stepPdfEditorPage(1)" title="Trang sau">›</button>
+                <div style="width:1px;height:18px;background:var(--border);margin:0 4px;"></div>
+                <button class="pdf-zoom-btn" onclick="fitPdfEditorToWidth()" title="Fit to width">⊡</button>
                 <button class="pdf-zoom-btn" onclick="zoomPdfEditor(-0.15)" title="Thu nhỏ">−</button>
-                <span id="edit-zoom-label">115%</span>
+                <span id="edit-zoom-label" style="min-width:38px;text-align:center;">100%</span>
                 <button class="pdf-zoom-btn" onclick="zoomPdfEditor(0.15)" title="Phóng to">+</button>
+                <div style="width:1px;height:18px;background:var(--border);margin:0 4px;"></div>
+                <span id="edit-detect-status" style="font-size:11px;color:var(--text-tertiary);"></span>
               </div>
               <div class="pdf-editor-stage" id="edit-stage">
-                <div class="reorder-preview-empty">Click vào preview để đặt vị trí edit.</div>
+                <div class="reorder-preview-empty" style="padding:40px;">Chọn file PDF để bắt đầu chỉnh sửa.</div>
               </div>
             </section>
+
+            <!-- ── Right: properties panel ── -->
             <aside class="pdf-edit-sidepanel">
-              <div class="pdf-edit-panel-title">Text styles</div>
-              <div class="alert alert-info" id="edit-selected-text">Các text trong trang sẽ hiện thành textbox. Click vào box cần sửa.</div>
-              <div id="edit-text-wrap">
-                <label class="field-label">Text</label>
-                <textarea id="edit-text" placeholder="Nội dung cần thêm..." style="min-height:110px;"></textarea>
-              </div>
-              <div class="grid-2">
+
+              <!-- Text properties -->
+              <div class="prop-section" id="edit-text-props">
+                <div class="pdf-edit-panel-title">Text</div>
                 <div>
-                  <label class="field-label">X (%)</label>
-                  <input type="number" id="edit-x" min="0" max="100" value="12" oninput="updatePdfEditorMarker()">
+                  <div class="prop-label">Font</div>
+                  <select id="edit-font-family" onchange="applyFabricProp('fontFamily', this.value)" style="width:100%;padding:5px 6px;">
+                    <option value="helv">Helvetica</option>
+                    <option value="tiro">Times New Roman</option>
+                    <option value="cour">Courier</option>
+                    <option value="noto">Noto Sans (Tiếng Việt)</option>
+                  </select>
                 </div>
-                <div>
-                  <label class="field-label">Y (%)</label>
-                  <input type="number" id="edit-y" min="0" max="100" value="12" oninput="updatePdfEditorMarker()">
+                <div class="fmt-btn-row">
+                  <button class="fmt-btn" id="btn-bold" onclick="toggleFabricFormat('bold')" title="Bold"><b>B</b></button>
+                  <button class="fmt-btn" id="btn-italic" onclick="toggleFabricFormat('italic')" title="Italic"><i>I</i></button>
+                  <button class="fmt-btn" id="btn-underline" onclick="toggleFabricFormat('underline')" title="Underline"><u>U</u></button>
+                  <div style="flex:1;"></div>
+                  <button class="fmt-btn" id="btn-align-left" onclick="applyFabricProp('textAlign','left')" title="Align left">⬅</button>
+                  <button class="fmt-btn" id="btn-align-center" onclick="applyFabricProp('textAlign','center')" title="Center">≡</button>
+                  <button class="fmt-btn" id="btn-align-right" onclick="applyFabricProp('textAlign','right')" title="Align right">➡</button>
+                </div>
+                <div class="prop-row">
+                  <div style="flex:1;">
+                    <div class="prop-label">Size (pt)</div>
+                    <input type="number" id="edit-size" min="6" max="144" value="12" style="width:100%;" oninput="applyFabricProp('fontSize', parseFloat(this.value) * pdfEditorZoom)">
+                  </div>
+                  <div style="flex:1;">
+                    <div class="prop-label">Color</div>
+                    <div class="color-input-row" style="gap:4px;">
+                      <input type="color" id="edit-color" value="#000000" oninput="applyFabricProp('fill', this.value)" style="flex:1;height:32px;">
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="grid-2">
-                <div>
-                  <label class="field-label">Size</label>
-                  <input type="number" id="edit-size" min="6" max="96" value="14" oninput="updatePdfEditorMarker()">
-                </div>
-                <div>
-                  <label class="field-label">Width (%)</label>
-                  <input type="number" id="edit-width" min="4" max="100" value="28" oninput="updatePdfEditorMarker()">
+
+              <div class="panel-divider"></div>
+
+              <!-- Stroke/fill for shapes -->
+              <div class="prop-section" id="edit-shape-props" style="display:none;">
+                <div class="pdf-edit-panel-title">Shape</div>
+                <div class="prop-row">
+                  <div style="flex:1;">
+                    <div class="prop-label">Stroke</div>
+                    <input type="color" id="edit-stroke-color" value="#000000" oninput="applyFabricProp('stroke',this.value)" style="width:100%;height:32px;">
+                  </div>
+                  <div style="flex:1;">
+                    <div class="prop-label">Fill</div>
+                    <input type="color" id="edit-fill-color" value="#ffffff" oninput="applyFabricProp('fill',this.value)" style="width:100%;height:32px;">
+                  </div>
                 </div>
               </div>
-              <div class="color-input-row">
-                <div style="flex:1;">
-                  <label class="field-label">Current color</label>
-                  <input type="text" id="edit-color-text" value="#1D9E75" oninput="syncPdfEditorColor('text')">
+
+              <!-- Opacity -->
+              <div class="prop-section">
+                <div class="prop-label">Opacity</div>
+                <div class="opacity-row">
+                  <input type="range" id="edit-opacity" min="0" max="100" value="100" oninput="applyFabricProp('opacity', this.value/100); document.getElementById('edit-opacity-val').textContent=this.value+'%'">
+                  <span class="opacity-val" id="edit-opacity-val">100%</span>
                 </div>
-                <input type="color" id="edit-color" value="#1D9E75" oninput="syncPdfEditorColor('picker')">
               </div>
-              <div class="btn-row">
-                <button class="btn primary" onclick="addPdfEditAction()">Apply edit</button>
-                <button class="btn" onclick="undoPdfEditAction()">Undo</button>
-                <button class="btn danger" onclick="clearPdfEditActions()">Clear</button>
+
+              <!-- Object layer controls -->
+              <div class="prop-section">
+                <div class="prop-label">Layer</div>
+                <div class="fmt-btn-row" style="gap:4px;">
+                  <button class="tool-btn" style="flex:1;" onclick="bringFabricObjForward()">↑ Forward</button>
+                  <button class="tool-btn" style="flex:1;" onclick="sendFabricObjBackward()">↓ Backward</button>
+                </div>
               </div>
-              <div class="pdf-edit-panel-title">Changes</div>
-              <div class="pdf-editor-actions" id="edit-actions"></div>
-              <div class="alert alert-info" id="edit-status">Text/shape sẽ được ghi lên PDF khi export.</div>
-              <button class="pdf-save-btn" onclick="exportEditedPdf()" id="edit-btn">Save changes</button>
+
+              <!-- Draw color when in draw mode -->
+              <div class="prop-section" id="edit-draw-props" style="display:none;">
+                <div class="pdf-edit-panel-title">Draw</div>
+                <div class="prop-row">
+                  <div style="flex:1;">
+                    <div class="prop-label">Color</div>
+                    <input type="color" id="edit-draw-color" value="#e53935" oninput="if(fabricCanvas) fabricCanvas.freeDrawingBrush.color=this.value;" style="width:100%;height:32px;">
+                  </div>
+                  <div style="flex:1;">
+                    <div class="prop-label">Width</div>
+                    <input type="number" id="edit-draw-width" min="1" max="40" value="3" style="width:100%;" oninput="if(fabricCanvas) fabricCanvas.freeDrawingBrush.width=parseInt(this.value)||3;">
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel-divider"></div>
+
+              <div class="pdf-edit-panel-title">Changes (<span id="edit-change-count">0</span>)</div>
+              <div class="alert alert-info" id="edit-status" style="font-size:12px;">Mở PDF để bắt đầu.</div>
+              <button class="pdf-save-btn" onclick="exportEditedPdf()" id="edit-btn">💾 Save PDF</button>
             </aside>
           </div>
         </div>
@@ -2209,11 +2291,19 @@ let pdfjsReady = null;
 let pdfEditorFile = null;
 let pdfEditorDoc = null;
 let pdfEditorJsDoc = null;
-let pdfEditorActions = [];
-let pdfEditorPageTextItems = [];
-let pdfEditorSelectedText = null;
-let pdfEditorZoom = 1.15;
-let pdfEditorTool = 'replace';
+let pdfEditorZoom = 1.0;
+let pdfEditorTool = 'edit-text';
+let pdfEditorCurrentPage = 1;
+let pdfBaseWidth = 0;
+let pdfBaseHeight = 0;
+/** @type {fabric.Canvas|null} */
+let fabricCanvas = null;
+/** Map<pageNum, {fabricJson, baseWidth, baseHeight}> */
+const pdfEditorPageStates = new Map();
+/** Undo/redo stacks: each entry is {page, fabricJson} snapshots for all dirty pages */
+const pdfUndoStack = [];
+const pdfRedoStack = [];
+const PDF_UNDO_LIMIT = 30;
 const PDF_API_BASE = localStorage.getItem('sidekickPdfApiBase') || 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 let reorderPageOrder = [];
 let reorderDragIndex = null;
@@ -2307,78 +2397,75 @@ function makePdfTextImage(text, size, color, maxWidth) {
   lines.forEach((line, index) => ctx.fillText(line, padX, padY + index * lineHeight, maxWidth - padX * 2));
   return { bytes: dataUrlToUint8Array(canvas.toDataURL('image/png')), width, height };
 }
-function syncPdfEditorColor(source) {
-  const picker = document.getElementById('edit-color');
-  const text = document.getElementById('edit-color-text');
-  if (source === 'picker') text.value = picker.value;
-  else if (/^#[0-9a-f]{6}$/i.test(text.value.trim())) picker.value = text.value.trim();
-}
-function setPdfEditorTool(tool) {
+// ─── Stub for old references (removed) ───
+function syncPdfEditorColor() {}
+function setPdfEditorTool(tool) { _setPdfEditorTool(tool); }
+// ── Tool switching ───────────────────────────────────────────────────────────
+function _setPdfEditorTool(tool) {
   pdfEditorTool = tool;
-  syncPdfEditorTool();
+  document.querySelectorAll('.tool-btn[data-edit-tool]').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.editTool === tool));
+  const isText = tool === 'edit-text' || tool === 'add-text';
+  const isShape = tool === 'highlight' || tool === 'whiteout' || tool === 'rect';
+  const isDraw = tool === 'draw';
+  document.getElementById('edit-text-props').style.display = isText ? '' : 'none';
+  document.getElementById('edit-shape-props').style.display = isShape ? '' : 'none';
+  document.getElementById('edit-draw-props').style.display = isDraw ? '' : 'none';
+  if (!fabricCanvas) return;
+  fabricCanvas.isDrawingMode = isDraw;
+  if (isDraw) {
+    fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+    fabricCanvas.freeDrawingBrush.color = document.getElementById('edit-draw-color')?.value || '#e53935';
+    fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById('edit-draw-width')?.value || '3');
+    fabricCanvas.selection = false;
+  } else {
+    fabricCanvas.isDrawingMode = false;
+    fabricCanvas.selection = tool === 'select';
+  }
+  // In edit-text mode show detected boxes
+  fabricCanvas.getObjects().forEach(obj => {
+    if (obj.data?.type === 'detected') {
+      obj.selectable = (tool === 'edit-text');
+      obj.evented = (tool === 'edit-text');
+      obj.set('borderColor', tool === 'edit-text' ? 'rgba(0,119,253,0.7)' : 'transparent');
+      obj.set('opacity', tool === 'edit-text' ? 1 : 0);
+    }
+  });
+  fabricCanvas.renderAll();
 }
-function syncPdfEditorTool() {
-  const tool = pdfEditorTool || 'replace';
-  document.getElementById('edit-text-wrap').style.display = (tool === 'text' || tool === 'replace') ? 'block' : 'none';
-  document.getElementById('edit-selected-text').style.display = tool === 'replace' ? 'block' : 'none';
-  document.querySelectorAll('.tool-btn[data-edit-tool]').forEach(btn => btn.classList.toggle('active', btn.dataset.editTool === tool));
-  const stage = document.getElementById('edit-stage');
-  if (stage) stage.dataset.tool = tool;
-  updatePdfEditorMarker();
-}
-function getPdfEditorTool() {
-  return pdfEditorTool || 'replace';
-}
+
+// ── Page navigation ──────────────────────────────────────────────────────────
 function stepPdfEditorPage(delta) {
   if (!pdfEditorJsDoc) return;
   const pageInput = document.getElementById('edit-page');
   const current = parseInt(pageInput.value || '1', 10);
-  pageInput.value = Math.max(1, Math.min(pdfEditorJsDoc.numPages, current + delta));
+  const newPage = Math.max(1, Math.min(pdfEditorJsDoc.numPages, current + delta));
+  pageInput.value = newPage;
   renderPdfEditorPage();
 }
+function onEditPageInput() {
+  renderPdfEditorPage();
+}
+
+// ── Zoom ─────────────────────────────────────────────────────────────────────
 function zoomPdfEditor(delta) {
-  pdfEditorZoom = Math.max(0.55, Math.min(2.4, pdfEditorZoom + delta));
+  pdfEditorZoom = Math.max(0.2, Math.min(5.0, pdfEditorZoom + delta));
+  _updateZoomLabel();
+  renderPdfEditorPage();
+}
+function _updateZoomLabel() {
   const label = document.getElementById('edit-zoom-label');
   if (label) label.textContent = `${Math.round(pdfEditorZoom * 100)}%`;
+}
+async function fitPdfEditorToWidth() {
+  if (!pdfEditorJsDoc) return;
+  const stage = document.getElementById('edit-stage');
+  const avail = (stage?.clientWidth ?? 700) - 48;
+  const page = await pdfEditorJsDoc.getPage(pdfEditorCurrentPage);
+  const vp = page.getViewport({ scale: 1.0 });
+  pdfEditorZoom = Math.max(0.2, Math.min(5.0, avail / vp.width));
+  _updateZoomLabel();
   renderPdfEditorPage();
-}
-function updatePdfEditorMarker() {
-  const wrap = document.querySelector('#edit-stage .pdf-editor-canvas-wrap');
-  if (!wrap) return;
-  let marker = wrap.querySelector('.pdf-editor-marker');
-  if (!marker) {
-    marker = document.createElement('div');
-    marker.className = 'pdf-editor-marker';
-    wrap.appendChild(marker);
-  }
-  const tool = getPdfEditorTool();
-  const x = Math.max(0, Math.min(100, parseFloat(document.getElementById('edit-x').value || '0')));
-  const y = Math.max(0, Math.min(100, parseFloat(document.getElementById('edit-y').value || '0')));
-  const size = Math.max(4, parseFloat(document.getElementById('edit-size').value || '14'));
-  const width = Math.max(4, parseFloat(document.getElementById('edit-width').value || '28'));
-  marker.style.left = `${x}%`;
-  marker.style.top = `${y}%`;
-  marker.style.borderColor = document.getElementById('edit-color').value;
-  marker.style.background = tool === 'highlight' ? `${document.getElementById('edit-color').value}44` : 'transparent';
-  marker.style.width = `${width}%`;
-  marker.style.height = (tool === 'text' || tool === 'replace') ? `${Math.max(12, size)}px` : `${size}px`;
-}
-function selectPdfEditorText(index) {
-  const item = pdfEditorPageTextItems[index];
-  if (!item) return;
-  pdfEditorSelectedText = item;
-  document.querySelectorAll('#edit-stage .pdf-text-hit').forEach(el => el.classList.remove('selected'));
-  const hit = document.querySelector(`#edit-stage .pdf-text-hit[data-index="${index}"]`);
-  if (hit) hit.classList.add('selected');
-  setPdfEditorTool('replace');
-  document.getElementById('edit-text').value = item.text;
-  document.getElementById('edit-page').value = item.page;
-  document.getElementById('edit-x').value = item.xPct.toFixed(1);
-  document.getElementById('edit-y').value = item.yPct.toFixed(1);
-  document.getElementById('edit-size').value = Math.max(9, Math.round(item.height * 1.25));
-  document.getElementById('edit-width').value = Math.max(8, item.widthPct * 1.3).toFixed(1);
-  document.getElementById('edit-selected-text').textContent = `Đang chọn textbox: "${item.text.slice(0, 90)}"`;
-  syncPdfEditorTool();
 }
 async function renderPdfEditorThumbnails() {
   const rail = document.getElementById('edit-page-rail');
@@ -2416,11 +2503,13 @@ async function renderPdfEditorThumbnails() {
   updatePdfEditorThumbSelection();
 }
 function updatePdfEditorThumbSelection() {
-  const current = document.getElementById('edit-page') ? document.getElementById('edit-page').value : '1';
-  document.querySelectorAll('#edit-page-rail .pdf-page-thumb').forEach(item => {
-    item.classList.toggle('active', item.dataset.page === current);
-  });
+  const cur = String(pdfEditorCurrentPage);
+  document.querySelectorAll('#edit-page-rail .pdf-page-thumb').forEach(item =>
+    item.classList.toggle('active', item.dataset.page === cur));
 }
+
+// ── Improved text box detection (client-side fallback) ───────────────────────
+// Improved: Y-range overlap line grouping + char-width-based join gap
 function getPdfEditorTextBoxes(items, viewport, editorScale, pageNumber) {
   const pageWidth = viewport.width / editorScale;
   const pageHeight = viewport.height / editorScale;
@@ -2436,32 +2525,29 @@ function getPdfEditorTextBoxes(items, viewport, editorScale, pageNumber) {
       const top = Math.min(rect[1], rect[3]);
       const right = Math.max(rect[0], rect[2]);
       const bottom = Math.max(rect[1], rect[3]);
-      return {
-        text: item.str.trim(),
-        x: tx,
-        y: ty,
-        width: itemWidth,
-        height: itemHeight,
-        left,
-        top,
-        right,
-        bottom,
-        midY: (top + bottom) / 2,
-        widthPx: Math.max(4, right - left),
-        heightPx: Math.max(6, bottom - top)
-      };
+      return { text: item.str.trim(), x: tx, y: ty, width: itemWidth, height: itemHeight,
+        left, top, right, bottom, midY: (top + bottom) / 2,
+        widthPx: Math.max(4, right - left), heightPx: Math.max(6, bottom - top) };
     })
-    .sort((a, b) => Math.abs(a.midY - b.midY) > 5 ? a.midY - b.midY : a.left - b.left);
+    .sort((a, b) => a.top !== b.top ? a.top - b.top : a.left - b.left);
 
+  // Group by Y-range overlap (more robust than midY distance)
   const lines = [];
   raw.forEach(item => {
-    let line = lines.find(row => Math.abs(row.midY - item.midY) <= Math.max(5, Math.min(12, item.heightPx * 0.7)));
-    if (!line) {
-      line = { midY: item.midY, items: [] };
-      lines.push(line);
+    let best = null, bestOverlap = item.heightPx * 0.3;
+    for (const line of lines) {
+      const overlapTop = Math.max(item.top, line.top);
+      const overlapBot = Math.min(item.bottom, line.bottom);
+      const overlap = overlapBot - overlapTop;
+      if (overlap > bestOverlap) { bestOverlap = overlap; best = line; }
     }
-    line.items.push(item);
-    line.midY = line.items.reduce((sum, part) => sum + part.midY, 0) / line.items.length;
+    if (!best) {
+      best = { top: item.top, bottom: item.bottom, items: [] };
+      lines.push(best);
+    }
+    best.items.push(item);
+    best.top = Math.min(best.top, item.top);
+    best.bottom = Math.max(best.bottom, item.bottom);
   });
 
   const boxes = [];
@@ -2470,197 +2556,535 @@ function getPdfEditorTextBoxes(items, viewport, editorScale, pageNumber) {
     let run = [];
     const flushRun = () => {
       if (!run.length) return;
-      const left = Math.min(...run.map(part => part.left));
-      const top = Math.min(...run.map(part => part.top));
-      const right = Math.max(...run.map(part => part.right));
-      const bottom = Math.max(...run.map(part => part.bottom));
-      const x = Math.min(...run.map(part => part.x));
-      const y = Math.min(...run.map(part => part.y));
-      const pdfRight = Math.max(...run.map(part => part.x + part.width));
-      const pdfTop = Math.max(...run.map(part => part.y + part.height));
-      const text = run.map(part => part.text).join(' ').replace(/\s+/g, ' ').trim();
-      if (text) {
-        boxes.push({
-          text,
-          page: pageNumber,
-          x,
-          y,
-          width: Math.max(1, pdfRight - x),
-          height: Math.max(1, pdfTop - y),
-          xPct: (x / pageWidth) * 100,
-          yPct: (1 - (y / pageHeight)) * 100,
-          widthPct: ((pdfRight - x) / pageWidth) * 100,
-          left,
-          top,
-          widthPx: Math.max(8, right - left),
-          heightPx: Math.max(9, bottom - top),
-          key: `${pageNumber}:${Math.round(x * 10)}:${Math.round(y * 10)}:${Math.round((pdfRight - x) * 10)}`
-        });
-      }
+      const rLeft = Math.min(...run.map(p => p.left));
+      const rTop = Math.min(...run.map(p => p.top));
+      const rRight = Math.max(...run.map(p => p.right));
+      const rBottom = Math.max(...run.map(p => p.bottom));
+      const x = Math.min(...run.map(p => p.x));
+      const y = Math.min(...run.map(p => p.y));
+      const pdfRight = Math.max(...run.map(p => p.x + p.width));
+      const pdfTop = Math.max(...run.map(p => p.y + p.height));
+      const text = run.map(p => p.text).join(' ').replace(/\s+/g, ' ').trim();
+      if (text) boxes.push({
+        text, page: pageNumber, x, y,
+        width: Math.max(1, pdfRight - x), height: Math.max(1, pdfTop - y),
+        xPct: (x / pageWidth) * 100, yPct: (1 - (y / pageHeight)) * 100,
+        widthPct: ((pdfRight - x) / pageWidth) * 100,
+        left: rLeft, top: rTop,
+        widthPx: Math.max(8, rRight - rLeft), heightPx: Math.max(9, rBottom - rTop),
+        key: `${pageNumber}:${Math.round(x * 10)}:${Math.round(y * 10)}:${Math.round((pdfRight - x) * 10)}`
+      });
       run = [];
     };
     parts.forEach(part => {
-      if (!run.length) {
-        run.push(part);
-        return;
-      }
+      if (!run.length) { run.push(part); return; }
       const prev = run[run.length - 1];
       const gap = part.left - prev.right;
-      const maxJoinGap = Math.max(10, Math.min(36, prev.heightPx * 1.8));
-      if (gap > maxJoinGap) flushRun();
+      const avgCharW = prev.widthPx / Math.max(1, prev.text.length);
+      const maxGap = Math.max(8, Math.min(60, avgCharW * 3));
+      if (gap > maxGap) flushRun();
       run.push(part);
     });
     flushRun();
   });
   return boxes.sort((a, b) => Math.abs(a.top - b.top) > 5 ? a.top - b.top : a.left - b.left);
 }
+
+// ── Fabric canvas setup ──────────────────────────────────────────────────────
+function _saveFabricPageState(pageNum) {
+  if (!fabricCanvas || !pageNum) return;
+  pdfEditorPageStates.set(pageNum, {
+    fabricJson: fabricCanvas.toJSON(['data', 'selectable', 'evented', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY']),
+    baseWidth: pdfBaseWidth,
+    baseHeight: pdfBaseHeight,
+    zoom: pdfEditorZoom
+  });
+}
+
+function _countDirtyObjects() {
+  let n = 0;
+  pdfEditorPageStates.forEach(state => {
+    const objs = state.fabricJson?.objects || [];
+    n += objs.filter(o => o.data?.dirty !== false).length;
+  });
+  if (fabricCanvas) {
+    n += fabricCanvas.getObjects().filter(o => o.data?.type !== 'detected' || o.data?.changed).length;
+  }
+  const el = document.getElementById('edit-change-count');
+  if (el) el.textContent = String(n);
+  return n;
+}
+
+function _pushUndoSnapshot() {
+  if (!fabricCanvas) return;
+  const snap = new Map();
+  pdfEditorPageStates.forEach((v, k) => snap.set(k, JSON.parse(JSON.stringify(v))));
+  snap.set(pdfEditorCurrentPage, {
+    fabricJson: fabricCanvas.toJSON(['data', 'selectable', 'evented', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY']),
+    baseWidth: pdfBaseWidth,
+    baseHeight: pdfBaseHeight,
+    zoom: pdfEditorZoom
+  });
+  pdfUndoStack.push(snap);
+  if (pdfUndoStack.length > PDF_UNDO_LIMIT) pdfUndoStack.shift();
+  pdfRedoStack.length = 0;
+  _countDirtyObjects();
+}
+
+function undoPdfEdit() {
+  if (!pdfUndoStack.length) return;
+  // Save current as redo
+  const redoSnap = new Map();
+  pdfEditorPageStates.forEach((v, k) => redoSnap.set(k, JSON.parse(JSON.stringify(v))));
+  if (fabricCanvas) redoSnap.set(pdfEditorCurrentPage, {
+    fabricJson: fabricCanvas.toJSON(['data', 'selectable', 'evented', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY']),
+    baseWidth: pdfBaseWidth, baseHeight: pdfBaseHeight, zoom: pdfEditorZoom
+  });
+  pdfRedoStack.push(redoSnap);
+  const snap = pdfUndoStack.pop();
+  snap.forEach((v, k) => pdfEditorPageStates.set(k, v));
+  const curState = snap.get(pdfEditorCurrentPage);
+  if (curState && fabricCanvas) {
+    fabricCanvas.loadFromJSON(curState.fabricJson, () => {
+      _reapplyToolModeToObjects();
+      fabricCanvas.renderAll();
+    });
+  }
+  _countDirtyObjects();
+}
+
+function redoPdfEdit() {
+  if (!pdfRedoStack.length) return;
+  const snap = pdfRedoStack.pop();
+  const undoSnap = new Map();
+  pdfEditorPageStates.forEach((v, k) => undoSnap.set(k, JSON.parse(JSON.stringify(v))));
+  if (fabricCanvas) undoSnap.set(pdfEditorCurrentPage, {
+    fabricJson: fabricCanvas.toJSON(['data', 'selectable', 'evented', 'hasControls', 'hasBorders', 'lockMovementX', 'lockMovementY']),
+    baseWidth: pdfBaseWidth, baseHeight: pdfBaseHeight, zoom: pdfEditorZoom
+  });
+  pdfUndoStack.push(undoSnap);
+  snap.forEach((v, k) => pdfEditorPageStates.set(k, v));
+  const curState = snap.get(pdfEditorCurrentPage);
+  if (curState && fabricCanvas) {
+    fabricCanvas.loadFromJSON(curState.fabricJson, () => {
+      _reapplyToolModeToObjects();
+      fabricCanvas.renderAll();
+    });
+  }
+  _countDirtyObjects();
+}
+
+function _reapplyToolModeToObjects() {
+  if (!fabricCanvas) return;
+  const isEditText = pdfEditorTool === 'edit-text';
+  fabricCanvas.getObjects().forEach(obj => {
+    if (obj.data?.type === 'detected') {
+      obj.selectable = isEditText;
+      obj.evented = isEditText;
+      obj.opacity = isEditText ? 1 : 0;
+    }
+  });
+}
+
+function _setupFabricEvents() {
+  if (!fabricCanvas) return;
+
+  fabricCanvas.on('object:modified', () => _pushUndoSnapshot());
+  fabricCanvas.on('object:added', (e) => {
+    // Skip background-type and detected text overlays
+    if (e.target?.data?.type === 'detected') return;
+    _pushUndoSnapshot();
+  });
+  fabricCanvas.on('path:created', (e) => {
+    if (e.path) { e.path.data = { type: 'draw', dirty: true }; }
+    _pushUndoSnapshot();
+  });
+
+  fabricCanvas.on('selection:created', (e) => _onFabricSelectionChange(e.selected?.[0]));
+  fabricCanvas.on('selection:updated', (e) => _onFabricSelectionChange(e.selected?.[0]));
+  fabricCanvas.on('selection:cleared', () => _onFabricSelectionChange(null));
+
+  // Add-text mode: click on blank area creates IText
+  fabricCanvas.on('mouse:down', (e) => {
+    if (pdfEditorTool === 'add-text' && !e.target) {
+      const pointer = fabricCanvas.getPointer(e.e);
+      _addTextAtPoint(pointer.x, pointer.y);
+    }
+    if ((pdfEditorTool === 'highlight' || pdfEditorTool === 'whiteout' || pdfEditorTool === 'rect') && !e.target) {
+      _startShapeDraw(e);
+    }
+  });
+}
+
+let _shapeDrawState = null;
+function _startShapeDraw(e) {
+  if (_shapeDrawState) return;
+  const pointer = fabricCanvas.getPointer(e.e);
+  const tool = pdfEditorTool;
+  const color = document.getElementById('edit-color')?.value || '#ffff00';
+  const rect = new fabric.Rect({
+    left: pointer.x, top: pointer.y, width: 0, height: 0,
+    fill: tool === 'highlight' ? color + '55' : (tool === 'whiteout' ? '#ffffff' : 'transparent'),
+    stroke: tool === 'rect' ? color : 'transparent',
+    strokeWidth: tool === 'rect' ? 1.5 : 0,
+    opacity: 1,
+    selectable: false, evented: false,
+    data: { type: tool, dirty: true }
+  });
+  fabricCanvas.add(rect);
+  _shapeDrawState = { rect, startX: pointer.x, startY: pointer.y };
+
+  const onMove = (ev) => {
+    if (!_shapeDrawState) return;
+    const p = fabricCanvas.getPointer(ev.e);
+    const x = Math.min(p.x, _shapeDrawState.startX);
+    const y = Math.min(p.y, _shapeDrawState.startY);
+    const w = Math.abs(p.x - _shapeDrawState.startX);
+    const h = Math.abs(p.y - _shapeDrawState.startY);
+    _shapeDrawState.rect.set({ left: x, top: y, width: w, height: h });
+    fabricCanvas.renderAll();
+  };
+  const onUp = () => {
+    if (!_shapeDrawState) return;
+    _shapeDrawState.rect.set({ selectable: true, evented: true });
+    fabricCanvas.setActiveObject(_shapeDrawState.rect);
+    _shapeDrawState = null;
+    fabricCanvas.off('mouse:move', onMove);
+    fabricCanvas.off('mouse:up', onUp);
+    _pushUndoSnapshot();
+    fabricCanvas.renderAll();
+  };
+  fabricCanvas.on('mouse:move', onMove);
+  fabricCanvas.on('mouse:up', onUp);
+}
+
+function _addTextAtPoint(x, y) {
+  const size = parseFloat(document.getElementById('edit-size')?.value || '12') * pdfEditorZoom;
+  const color = document.getElementById('edit-color')?.value || '#000000';
+  const fontFamily = document.getElementById('edit-font-family')?.value || 'helv';
+  const itext = new fabric.IText('Text', {
+    left: x, top: y,
+    fontSize: size,
+    fill: color,
+    fontFamily: _cssFontFamily(fontFamily),
+    backgroundColor: 'transparent',
+    data: { type: 'text', dirty: true }
+  });
+  fabricCanvas.add(itext);
+  fabricCanvas.setActiveObject(itext);
+  itext.enterEditing();
+  itext.selectAll();
+  fabricCanvas.renderAll();
+}
+
+function _cssFontFamily(pdfFamily) {
+  const map = { helv: 'Helvetica, Arial, sans-serif', tiro: 'Times New Roman, serif', cour: 'Courier New, monospace', noto: 'Noto Sans, sans-serif' };
+  return map[pdfFamily] || 'Helvetica, Arial, sans-serif';
+}
+
+function _onFabricSelectionChange(obj) {
+  if (!obj) {
+    document.getElementById('edit-status').textContent = 'Chọn object để chỉnh sửa.';
+    return;
+  }
+  const isText = obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox';
+  const isShape = obj.type === 'rect' || obj.type === 'circle';
+  document.getElementById('edit-text-props').style.display = isText ? '' : 'none';
+  document.getElementById('edit-shape-props').style.display = isShape ? '' : 'none';
+  if (isText) {
+    // Sync panel from object
+    const size = Math.round((obj.fontSize || 12) / pdfEditorZoom);
+    const el = document.getElementById('edit-size'); if (el) el.value = size;
+    const fc = document.getElementById('edit-font-family');
+    if (fc) {
+      const fam = Object.entries({ helv: 'Helvetica', tiro: 'Times', cour: 'Courier', noto: 'Noto' })
+        .find(([, v]) => (obj.fontFamily || '').toLowerCase().includes(v.toLowerCase()));
+      if (fam) fc.value = fam[0];
+    }
+    const col = document.getElementById('edit-color'); if (col) col.value = obj.fill || '#000000';
+    document.getElementById('btn-bold')?.classList.toggle('active', obj.fontWeight === 'bold');
+    document.getElementById('btn-italic')?.classList.toggle('active', obj.fontStyle === 'italic');
+    document.getElementById('btn-underline')?.classList.toggle('active', !!obj.underline);
+    ['left', 'center', 'right'].forEach(a => document.getElementById(`btn-align-${a}`)?.classList.toggle('active', obj.textAlign === a));
+  }
+  const opEl = document.getElementById('edit-opacity');
+  if (opEl) { opEl.value = Math.round((obj.opacity ?? 1) * 100); document.getElementById('edit-opacity-val').textContent = opEl.value + '%'; }
+  document.getElementById('edit-status').textContent = `Đang chọn: ${obj.type}`;
+}
+
+function applyFabricProp(prop, value) {
+  if (!fabricCanvas) return;
+  const obj = fabricCanvas.getActiveObject();
+  if (!obj) return;
+  obj.set(prop, value);
+  if (obj.data) obj.data.dirty = true;
+  fabricCanvas.renderAll();
+}
+
+function toggleFabricFormat(fmt) {
+  if (!fabricCanvas) return;
+  const obj = fabricCanvas.getActiveObject();
+  if (!obj) return;
+  if (fmt === 'bold') {
+    const isBold = obj.fontWeight === 'bold';
+    obj.set('fontWeight', isBold ? 'normal' : 'bold');
+    document.getElementById('btn-bold')?.classList.toggle('active', !isBold);
+  } else if (fmt === 'italic') {
+    const isItalic = obj.fontStyle === 'italic';
+    obj.set('fontStyle', isItalic ? 'normal' : 'italic');
+    document.getElementById('btn-italic')?.classList.toggle('active', !isItalic);
+  } else if (fmt === 'underline') {
+    const isUl = !!obj.underline;
+    obj.set('underline', !isUl);
+    document.getElementById('btn-underline')?.classList.toggle('active', !isUl);
+  }
+  if (obj.data) obj.data.dirty = true;
+  fabricCanvas.renderAll();
+}
+
+function deleteSelectedFabricObj() {
+  if (!fabricCanvas) return;
+  const obj = fabricCanvas.getActiveObject();
+  if (!obj) return;
+  if (obj.type === 'activeSelection') {
+    obj.getObjects().forEach(o => fabricCanvas.remove(o));
+    fabricCanvas.discardActiveObject();
+  } else {
+    fabricCanvas.remove(obj);
+  }
+  _pushUndoSnapshot();
+  fabricCanvas.renderAll();
+}
+
+function bringFabricObjForward() {
+  if (!fabricCanvas) return;
+  const obj = fabricCanvas.getActiveObject();
+  if (obj) { fabricCanvas.bringForward(obj); fabricCanvas.renderAll(); }
+}
+function sendFabricObjBackward() {
+  if (!fabricCanvas) return;
+  const obj = fabricCanvas.getActiveObject();
+  if (obj) { fabricCanvas.sendBackwards(obj); fabricCanvas.renderAll(); }
+}
+
+function insertImageToPdf(input) {
+  const file = input.files?.[0];
+  if (!file || !fabricCanvas) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    fabric.Image.fromURL(dataUrl, (img) => {
+      const maxW = pdfBaseWidth * pdfEditorZoom * 0.5;
+      if (img.width > maxW) img.scaleToWidth(maxW);
+      img.set({ left: 60, top: 60, data: { type: 'image', imageDataUrl: dataUrl, dirty: true } });
+      fabricCanvas.add(img);
+      fabricCanvas.setActiveObject(img);
+      fabricCanvas.renderAll();
+      _pushUndoSnapshot();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Text detection via backend (accurate) ────────────────────────────────────
+async function _detectTextBlocksBackend(pageNum) {
+  if (!pdfEditorFile) return null;
+  try {
+    const form = new FormData();
+    form.append('file', pdfEditorFile, pdfEditorFile.name);
+    form.append('pages', String(pageNum));
+    const res = await fetch(`${PDF_API_BASE}/pdf/analyze-text`, { method: 'POST', mode: 'cors', body: form });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.pages?.[0]?.blocks || null;
+  } catch { return null; }
+}
+
+async function _detectTextBlocksClient(page, viewport, zoom, pageNum) {
+  const textContent = await page.getTextContent();
+  return getPdfEditorTextBoxes(textContent.items, viewport, zoom, pageNum).map(b => ({
+    rect: [b.left / zoom, b.top / zoom, (b.left + b.widthPx) / zoom, (b.top + b.heightPx) / zoom],
+    text: b.text
+  }));
+}
+
+function _addDetectedTextToCanvas(blocks, zoom) {
+  if (!fabricCanvas || !blocks?.length) return;
+  blocks.forEach(block => {
+    const [x0, y0, x1, y1] = block.rect;
+    const blockH = y1 - y0;
+    const lineCount = Math.max(1, (block.text.match(/\n/g) || []).length + 1);
+    const estFontSize = Math.max(7, Math.min(42, (blockH / lineCount) * 0.72)) * zoom;
+    const text = (block.text || '').replace(/\n/g, ' ').trim();
+    const itext = new fabric.IText(text, {
+      left: x0 * zoom,
+      top: y0 * zoom,
+      fontSize: estFontSize,
+      fill: 'rgba(0,0,255,0.85)',
+      fontFamily: 'Helvetica, Arial, sans-serif',
+      backgroundColor: 'transparent',
+      selectable: false,
+      evented: false,
+      hasControls: true,
+      hasBorders: true,
+      borderColor: 'rgba(0,119,253,0.7)',
+      cornerColor: 'rgba(0,119,253,0.9)',
+      opacity: 0,
+      data: {
+        type: 'detected',
+        originalRect: block.rect,  // in PDF points (Y from top, PyMuPDF)
+        originalText: text,
+        changed: false
+      }
+    });
+    itext.on('editing:exited', () => {
+      const changed = itext.text !== itext.data.originalText;
+      itext.data.changed = changed;
+      itext.data.dirty = changed;
+      if (changed) {
+        itext.set({ fill: '#000000', backgroundColor: '#ffffff', selectable: true, evented: true, opacity: 1 });
+      } else {
+        itext.set({ fill: 'rgba(0,0,255,0.85)', backgroundColor: 'transparent', opacity: pdfEditorTool === 'edit-text' ? 1 : 0 });
+      }
+      fabricCanvas.renderAll();
+      _countDirtyObjects();
+    });
+    itext.on('selected', () => {
+      if (!itext.data.changed) {
+        itext.set({ fill: '#000000', backgroundColor: '#ffffffee' });
+        fabricCanvas.renderAll();
+      }
+    });
+    fabricCanvas.add(itext);
+  });
+}
+
+// ── Render page ──────────────────────────────────────────────────────────────
 async function renderPdfEditorPage() {
   if (!pdfEditorJsDoc) return;
-  pdfEditorSelectedText = null;
-  pdfEditorPageTextItems = [];
   const pageInput = document.getElementById('edit-page');
-  const pageNumber = Math.max(1, Math.min(pdfEditorJsDoc.numPages, parseInt(pageInput.value || '1', 10)));
-  pageInput.value = pageNumber;
+  const newPage = Math.max(1, Math.min(pdfEditorJsDoc.numPages, parseInt(pageInput.value || '1', 10)));
+
+  // Save current page state before switching
+  if (fabricCanvas && pdfEditorCurrentPage) {
+    _saveFabricPageState(pdfEditorCurrentPage);
+  }
+
+  pdfEditorCurrentPage = newPage;
+  pageInput.value = newPage;
   const totalEl = document.getElementById('edit-page-total');
   if (totalEl) totalEl.textContent = `/ ${pdfEditorJsDoc.numPages}`;
   updatePdfEditorThumbSelection();
+
   const stage = document.getElementById('edit-stage');
-  stage.innerHTML = '<div class="reorder-preview-empty">Đang render preview...</div>';
+  const statusEl = document.getElementById('edit-status');
+  statusEl.className = 'alert alert-info';
+  statusEl.textContent = 'Đang render…';
+
   try {
-    const page = await pdfEditorJsDoc.getPage(pageNumber);
-    const editorScale = pdfEditorZoom;
-    const viewport = page.getViewport({ scale: editorScale });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(viewport.width);
-    canvas.height = Math.ceil(viewport.height);
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) throw new Error('Không tạo được canvas preview');
+    const page = await pdfEditorJsDoc.getPage(newPage);
+    const baseVp = page.getViewport({ scale: 1.0 });
+    pdfBaseWidth = baseVp.width;
+    pdfBaseHeight = baseVp.height;
+
+    // Fit to width on first load (zoom not yet calculated)
+    if (pdfEditorZoom === 1.0 && stage) {
+      const avail = (stage.clientWidth || 800) - 48;
+      pdfEditorZoom = Math.max(0.25, Math.min(4.0, avail / pdfBaseWidth));
+      _updateZoomLabel();
+    }
+
+    const viewport = page.getViewport({ scale: pdfEditorZoom });
+    const vpW = Math.ceil(viewport.width);
+    const vpH = Math.ceil(viewport.height);
+
+    // Render PDF page to offscreen canvas
+    const offscreen = document.createElement('canvas');
+    offscreen.width = vpW;
+    offscreen.height = vpH;
+    const ctx = offscreen.getContext('2d', { alpha: false });
     await page.render({ canvasContext: ctx, viewport, background: 'rgb(255,255,255)' }).promise;
+
+    // Build wrap + canvas element
+    stage.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'pdf-editor-canvas-wrap';
-    wrap.appendChild(canvas);
-    const textContent = await page.getTextContent();
-    pdfEditorPageTextItems = getPdfEditorTextBoxes(textContent.items, viewport, editorScale, pageNumber);
-    pdfEditorPageTextItems.forEach((item, index) => {
-      const hit = document.createElement('button');
-      hit.type = 'button';
-      hit.className = 'pdf-text-hit';
-      hit.dataset.index = String(index);
-      hit.title = item.text;
-      hit.style.left = `${item.left}px`;
-      hit.style.top = `${item.top}px`;
-      hit.style.width = `${item.widthPx}px`;
-      hit.style.height = `${item.heightPx}px`;
-      hit.innerHTML = `<span>${escapeXml(item.text)}</span>`;
-      hit.addEventListener('click', event => {
-        event.stopPropagation();
-        selectPdfEditorText(index);
-      });
-      wrap.appendChild(hit);
-    });
-    wrap.addEventListener('click', event => {
-      const rect = wrap.getBoundingClientRect();
-      document.getElementById('edit-x').value = (((event.clientX - rect.left) / rect.width) * 100).toFixed(1);
-      document.getElementById('edit-y').value = (((event.clientY - rect.top) / rect.height) * 100).toFixed(1);
-      updatePdfEditorMarker();
-    });
-    stage.innerHTML = '';
+    wrap.style.width = vpW + 'px';
+    wrap.style.height = vpH + 'px';
+    const bgCanvas = document.createElement('canvas');
+    bgCanvas.id = 'pdf-bg-canvas';
+    bgCanvas.width = vpW;
+    bgCanvas.height = vpH;
+    bgCanvas.style.display = 'block';
+    bgCanvas.getContext('2d').drawImage(offscreen, 0, 0);
+    wrap.appendChild(bgCanvas);
+
+    // Create Fabric canvas on top
+    if (fabricCanvas) { try { fabricCanvas.dispose(); } catch (_) {} fabricCanvas = null; }
+    const fabricEl = document.createElement('canvas');
+    fabricEl.id = 'pdf-fabric-canvas';
+    wrap.appendChild(fabricEl);
     stage.appendChild(wrap);
-    document.getElementById('edit-selected-text').textContent = `Đã detect ${pdfEditorPageTextItems.length} textbox trên trang này. Click box cần sửa.`;
-    updatePdfEditorMarker();
+
+    fabricCanvas = new fabric.Canvas('pdf-fabric-canvas', {
+      width: vpW, height: vpH,
+      backgroundColor: null,
+      selection: pdfEditorTool === 'select',
+      preserveObjectStacking: true
+    });
+    // Fix Fabric wrapper position to overlay the bg canvas
+    const fabricWrapper = fabricCanvas.wrapperEl;
+    if (fabricWrapper) {
+      fabricWrapper.style.position = 'absolute';
+      fabricWrapper.style.top = '0';
+      fabricWrapper.style.left = '0';
+    }
+
+    // Restore saved state OR load fresh detection
+    const saved = pdfEditorPageStates.get(newPage);
+    if (saved?.fabricJson) {
+      fabricCanvas.loadFromJSON(saved.fabricJson, () => {
+        _reapplyToolModeToObjects();
+        _setupFabricEvents();
+        fabricCanvas.renderAll();
+      });
+    } else {
+      // Detect text
+      const detectEl = document.getElementById('edit-detect-status');
+      if (detectEl) detectEl.textContent = 'Đang detect text…';
+      let blocks = await _detectTextBlocksBackend(newPage);
+      if (!blocks) blocks = await _detectTextBlocksClient(page, viewport, pdfEditorZoom, newPage);
+      _addDetectedTextToCanvas(blocks, pdfEditorZoom);
+      _reapplyToolModeToObjects();
+      _setupFabricEvents();
+      if (detectEl) detectEl.textContent = blocks?.length ? `${blocks.length} text blocks` : '';
+    }
+
+    statusEl.textContent = 'Click "Edit Text" rồi click vào text để sửa. Dùng các tool khác để thêm nội dung.';
   } catch (e) {
-    stage.innerHTML = `<div class="reorder-preview-empty">Không render được preview: ${escapeXml(e.message)}</div>`;
+    stage.innerHTML = `<div class="reorder-preview-empty" style="padding:40px;">Không render được: ${escapeXml(e.message)}</div>`;
+    statusEl.className = 'alert alert-danger';
+    statusEl.textContent = 'Lỗi render: ' + e.message;
   }
 }
-function renderPdfEditActions() {
-  const list = document.getElementById('edit-actions');
-  if (!pdfEditorActions.length) {
-    list.innerHTML = '<div class="pdf-editor-action">Chưa có edit nào.</div>';
-    return;
-  }
-  list.innerHTML = pdfEditorActions.map((action, index) => {
-    const verb = action.tool === 'replace' ? 'Edit text' : action.tool === 'text' ? 'Add text' : action.tool;
-    const preview = (action.tool === 'text' || action.tool === 'replace') ? `: ${escapeXml(action.text || '').slice(0, 58)}` : '';
-    return `<div class="pdf-editor-action"><strong>Trang ${action.page}</strong> · ${verb}${preview}<button class="file-item-remove" style="float:right;" onclick="removePdfEditAction(${index})">×</button></div>`;
-  }).join('');
-}
-function buildPdfReplaceRect(selectedText) {
-  const page = pdfEditorDoc ? pdfEditorDoc.getPage(parseInt(document.getElementById('edit-page').value || '1', 10) - 1) : null;
-  const pageWidth = page ? page.getWidth() : (selectedText.width / Math.max(selectedText.widthPct, 1)) * 100;
-  const widthPct = Math.max(1, parseFloat(document.getElementById('edit-width').value || selectedText.widthPct || '12'));
-  const fontSize = Math.max(6, parseFloat(document.getElementById('edit-size').value || selectedText.height || '14'));
-  const desiredWidth = Math.max(selectedText.width, pageWidth * (widthPct / 100));
-  const desiredHeight = Math.max(selectedText.height, fontSize * 1.75);
-  const yTop = selectedText.y + selectedText.height;
-  return {
-    x: selectedText.x,
-    y: yTop - desiredHeight,
-    width: desiredWidth,
-    height: desiredHeight,
-    originalWidth: selectedText.width,
-    originalHeight: selectedText.height
-  };
-}
-function buildPdfEditActionFromCurrent() {
-  if (!pdfEditorDoc) { alert('Chưa chọn file PDF'); return; }
-  const tool = getPdfEditorTool();
-  const text = document.getElementById('edit-text').value;
-  if ((tool === 'text' || tool === 'replace') && !text.trim()) { alert('Nhập text cần thêm'); return; }
-  if (tool === 'replace' && (!pdfEditorSelectedText || pdfEditorSelectedText.page !== parseInt(document.getElementById('edit-page').value || '1', 10))) {
-    alert('Chọn text cần thay trong preview trước');
-    return;
-  }
-  return {
-    tool,
-    text,
-    page: parseInt(document.getElementById('edit-page').value || '1', 10),
-    xPct: parseFloat(document.getElementById('edit-x').value || '0'),
-    yPct: parseFloat(document.getElementById('edit-y').value || '0'),
-    size: parseFloat(document.getElementById('edit-size').value || '14'),
-    widthPct: parseFloat(document.getElementById('edit-width').value || '28'),
-    color: document.getElementById('edit-color').value,
-    sourceText: pdfEditorSelectedText ? pdfEditorSelectedText.text : '',
-    selectionKey: tool === 'replace' && pdfEditorSelectedText ? pdfEditorSelectedText.key : '',
-    rect: tool === 'replace' ? buildPdfReplaceRect(pdfEditorSelectedText) : null
-  };
-}
-function addPdfEditAction(options={}) {
-  const action = buildPdfEditActionFromCurrent();
-  if (!action) return false;
-  const existingIndex = action.selectionKey
-    ? pdfEditorActions.findIndex(item => item.selectionKey === action.selectionKey)
-    : -1;
-  if (existingIndex >= 0) pdfEditorActions[existingIndex] = action;
-  else pdfEditorActions.push(action);
-  renderPdfEditActions();
-  if (!options.silent) document.getElementById('edit-status').textContent = `${pdfEditorActions.length} edit đang chờ export.`;
-  return true;
-}
-function removePdfEditAction(index) {
-  pdfEditorActions.splice(index, 1);
-  renderPdfEditActions();
-}
-function undoPdfEditAction() {
-  if (!pdfEditorActions.length) return;
-  pdfEditorActions.pop();
-  renderPdfEditActions();
-  document.getElementById('edit-status').textContent = `${pdfEditorActions.length} edit đang chờ export.`;
-}
-function clearPdfEditActions() {
-  pdfEditorActions = [];
-  renderPdfEditActions();
-  document.getElementById('edit-status').textContent = 'Text/shape sẽ được ghi lên PDF khi export.';
-}
+
+// ── Load file ────────────────────────────────────────────────────────────────
 async function loadPdfEditorFile(input) {
   const f = input.files[0];
   if (!f) return;
   pdfEditorFile = f;
-  pdfEditorActions = [];
+  pdfEditorPageStates.clear();
+  pdfUndoStack.length = 0;
+  pdfRedoStack.length = 0;
+  pdfEditorZoom = 1.0;
+  pdfEditorCurrentPage = 1;
+  if (fabricCanvas) { try { fabricCanvas.dispose(); } catch (_) {} fabricCanvas = null; }
   const infoEl = document.getElementById('edit-info');
   const statusEl = document.getElementById('edit-status');
   infoEl.style.display = 'flex';
   statusEl.className = 'alert alert-info';
-  statusEl.textContent = 'Đang nạp PDF...';
+  statusEl.textContent = 'Đang nạp PDF…';
   try {
     const bytes = await f.arrayBuffer();
     pdfEditorDoc = await PDFDocument.load(bytes);
@@ -2669,36 +3093,155 @@ async function loadPdfEditorFile(input) {
     document.getElementById('edit-page').max = String(pdfEditorDoc.getPageCount());
     document.getElementById('edit-page').value = '1';
     document.getElementById('edit-page-total').textContent = `/ ${pdfEditorDoc.getPageCount()}`;
-    document.getElementById('edit-info-text').textContent = `📄 ${f.name} — ${pdfEditorDoc.getPageCount()} trang, ${(f.size/1024).toFixed(0)} KB`;
-    renderPdfEditActions();
+    document.getElementById('edit-info-text').textContent = `${f.name} — ${pdfEditorDoc.getPageCount()} trang, ${(f.size/1024).toFixed(0)} KB`;
     await renderPdfEditorThumbnails();
-    setPdfEditorTool('replace');
-    syncPdfEditorTool();
+    _setPdfEditorTool('edit-text');
     await renderPdfEditorPage();
-    statusEl.textContent = 'Click text trên trang để sửa, hoặc chọn công cụ khác trên toolbar.';
+    if (!window._pdfEditorKeyBound) {
+      document.addEventListener('keydown', _pdfEditorKeyHandler, { capture: true });
+      window._pdfEditorKeyBound = true;
+    }
   } catch (e) {
-    pdfEditorFile = null;
-    pdfEditorDoc = null;
-    pdfEditorJsDoc = null;
+    pdfEditorFile = null; pdfEditorDoc = null; pdfEditorJsDoc = null;
     statusEl.className = 'alert alert-danger';
     statusEl.textContent = 'Không đọc được PDF: ' + e.message;
   }
 }
+
+function _pdfEditorKeyHandler(e) {
+  if (!pdfEditorFile) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undoPdfEdit(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redoPdfEdit(); return; }
+  if (e.key === 'Delete' || e.key === 'Backspace') { const a = fabricCanvas?.getActiveObject(); if (a && !a.isEditing) { e.preventDefault(); deleteSelectedFabricObj(); } return; }
+  if (e.key === 'v' && !e.ctrlKey) { _setPdfEditorTool('select'); return; }
+  if (e.key === 'e') { _setPdfEditorTool('edit-text'); return; }
+  if (e.key === 't') { _setPdfEditorTool('add-text'); return; }
+  if (e.key === 'h') { _setPdfEditorTool('highlight'); return; }
+  if (e.key === 'w') { _setPdfEditorTool('whiteout'); return; }
+  if (e.key === 'r') { _setPdfEditorTool('rect'); return; }
+  if (e.key === 'd') { _setPdfEditorTool('draw'); return; }
+}
+
+// ── Convert Fabric objects → backend actions ──────────────────────────────────
+function _fabricObjectsToActions(fabricJson, pageNum, baseW, baseH, zoom) {
+  const actions = [];
+  const objs = fabricJson?.objects || [];
+  for (const obj of objs) {
+    const data = obj.data || {};
+    if (!data.dirty && data.type === 'detected' && !data.changed) continue;
+    if (data.type === 'detected' && !data.changed) continue;
+
+    // Convert canvas pixel coords → PDF point coords (Y from top, PyMuPDF style)
+    const left = (obj.left ?? 0) / zoom;
+    const top = (obj.top ?? 0) / zoom;
+    const width = ((obj.width ?? 10) * (obj.scaleX ?? 1)) / zoom;
+    const height = ((obj.height ?? 10) * (obj.scaleY ?? 1)) / zoom;
+
+    const baseAction = {
+      page: pageNum,
+      pdfX: left,
+      pdfY: top,
+      pdfWidth: Math.max(1, width),
+      pdfHeight: Math.max(1, height),
+      opacity: obj.opacity ?? 1
+    };
+
+    const objType = obj.type;
+    const dataType = data.type;
+
+    if (objType === 'i-text' || objType === 'text' || objType === 'textbox') {
+      const tool = data.changed ? 'replace' : (data.type === 'detected' ? null : 'text');
+      if (!tool) continue;
+      const fontSize = (obj.fontSize ?? 12) / zoom;
+      const fontFamilyStr = obj.fontFamily || 'Helvetica';
+      const fontFamily = fontFamilyStr.toLowerCase().includes('times') ? 'tiro'
+        : fontFamilyStr.toLowerCase().includes('courier') ? 'cour'
+        : fontFamilyStr.toLowerCase().includes('noto') ? 'noto' : 'helv';
+      const action = {
+        ...baseAction,
+        tool,
+        text: obj.text || '',
+        size: fontSize,
+        fontFamily,
+        bold: obj.fontWeight === 'bold',
+        italic: obj.fontStyle === 'italic',
+        textAlign: obj.textAlign || 'left',
+        color: obj.fill || '#000000'
+      };
+      if (tool === 'replace' && data.originalRect) {
+        action.originalRect = data.originalRect;
+        // originalRect is already in PDF points (Y from top), pass through
+        action.pdfX = data.originalRect[0];
+        action.pdfY = data.originalRect[1];
+        action.pdfWidth = Math.max(1, data.originalRect[2] - data.originalRect[0]);
+        action.pdfHeight = Math.max(1, data.originalRect[3] - data.originalRect[1]);
+      }
+      actions.push(action);
+    } else if (objType === 'rect') {
+      const fillColor = obj.fill || '';
+      const strokeColor = obj.stroke || '';
+      actions.push({
+        ...baseAction,
+        tool: dataType === 'whiteout' ? 'whiteout' : dataType === 'highlight' ? 'highlight' : 'rect',
+        color: strokeColor || fillColor || '#000000',
+        fillColor: dataType === 'highlight' ? fillColor.replace(/[0-9a-f]{2}$/i, '') : fillColor,
+        strokeWidth: obj.strokeWidth || 1.5
+      });
+    } else if (objType === 'image' || dataType === 'image') {
+      // imageDataUrl is stored in data when image is inserted
+      const imgData = data.imageDataUrl || obj.src;
+      if (imgData) {
+        actions.push({ ...baseAction, tool: 'image', imageDataUrl: imgData });
+      }
+    } else if (objType === 'path' || dataType === 'draw') {
+      // Export drawing as PNG overlay
+      try {
+        const group = new fabric.Group([fabric.util.object.clone(obj)]);
+        const dataUrl = group.toDataURL({ format: 'png', multiplier: 1 });
+        actions.push({ ...baseAction, tool: 'draw', imageDataUrl: dataUrl });
+      } catch (_) {}
+    }
+  }
+  return actions;
+}
+
+// ── Export ───────────────────────────────────────────────────────────────────
 async function exportEditedPdf() {
   if (!pdfEditorFile) { alert('Chưa chọn file PDF'); return; }
-  if (getPdfEditorTool() === 'replace' && pdfEditorSelectedText && document.getElementById('edit-text').value.trim()) {
-    addPdfEditAction({ silent: true });
+  // Save current page state
+  _saveFabricPageState(pdfEditorCurrentPage);
+
+  // Collect all actions across all pages
+  const allActions = [];
+  // Current page: use live Fabric objects (preserves image element refs)
+  if (fabricCanvas) {
+    const liveJson = { objects: fabricCanvas.getObjects().map(o => o.toObject(['data', 'selectable', 'evented'])) };
+    const curActs = _fabricObjectsToActions(liveJson, pdfEditorCurrentPage, pdfBaseWidth, pdfBaseHeight, pdfEditorZoom);
+    allActions.push(...curActs);
   }
-  if (!pdfEditorActions.length) { alert('Chưa có edit nào'); return; }
+  // Other pages: use saved JSON
+  pdfEditorPageStates.forEach((state, pageNum) => {
+    if (pageNum === pdfEditorCurrentPage) return;
+    const acts = _fabricObjectsToActions(state.fabricJson, pageNum, state.baseWidth, state.baseHeight, state.zoom);
+    allActions.push(...acts);
+  });
+
+  if (!allActions.length) {
+    alert('Chưa có thay đổi nào để export.');
+    return;
+  }
+
   const btn = document.getElementById('edit-btn');
   const statusEl = document.getElementById('edit-status');
   btn.disabled = true;
   try {
     statusEl.className = 'alert alert-info';
-    statusEl.textContent = 'Đang gửi backend để edit PDF...';
+    statusEl.textContent = `Đang gửi ${allActions.length} action lên backend…`;
     const form = new FormData();
     form.append('file', pdfEditorFile, pdfEditorFile.name);
-    form.append('actions', JSON.stringify(pdfEditorActions));
+    form.append('actions', JSON.stringify(allActions));
     const res = await fetch(`${PDF_API_BASE}/pdf/edit-text`, { method: 'POST', mode: 'cors', body: form });
     if (!res.ok) {
       const detail = await res.text().catch(() => res.statusText);
@@ -2708,72 +3251,10 @@ async function exportEditedPdf() {
     const outName = pdfEditorFile.name.replace(/\.pdf$/i, '') + '_edited.pdf';
     downloadBlob(blob, outName);
     statusEl.className = 'alert alert-success';
-    statusEl.textContent = `Xong: đã xuất ${outName}`;
-  } catch (e) {
-    statusEl.className = 'alert alert-info';
-    statusEl.textContent = 'Backend chưa sẵn sàng, đang fallback xử lý trong browser...';
-    await exportEditedPdfClient();
-  } finally {
-    btn.disabled = false;
-  }
-}
-async function exportEditedPdfClient() {
-  if (!pdfEditorFile) { alert('Chưa chọn file PDF'); return; }
-  if (!pdfEditorActions.length) { alert('Chưa có edit nào'); return; }
-  const btn = document.getElementById('edit-btn');
-  const statusEl = document.getElementById('edit-status');
-  btn.disabled = true;
-  try {
-    statusEl.className = 'alert alert-info';
-    statusEl.textContent = 'Đang ghi edit vào PDF...';
-    const doc = await PDFDocument.load(await pdfEditorFile.arrayBuffer());
-    for (const action of pdfEditorActions) {
-      const page = doc.getPage(action.page - 1);
-      const { width, height } = page.getSize();
-      const x = width * (action.xPct / 100);
-      const topY = height * (1 - action.yPct / 100);
-      const color = hexToPdfRgb(action.color);
-      if (action.tool === 'text' || action.tool === 'replace') {
-        const replaceRect = action.tool === 'replace' && action.rect ? action.rect : null;
-        const drawX = replaceRect ? replaceRect.x : x;
-        const drawYTop = replaceRect ? replaceRect.y + replaceRect.height : topY;
-        const maxTextWidth = replaceRect ? Math.max(replaceRect.width * 1.15, 12) : width * (action.widthPct / 100);
-        if (replaceRect) {
-          page.drawRectangle({
-            x: Math.max(0, replaceRect.x - 1),
-            y: Math.max(0, replaceRect.y - 2),
-            width: Math.min(width - replaceRect.x, replaceRect.width + 3),
-            height: replaceRect.height + 4,
-            color: rgb(1, 1, 1),
-            opacity: 1
-          });
-        }
-        const textImage = makePdfTextImage(action.text, action.size, action.color, maxTextWidth);
-        const embedded = await doc.embedPng(textImage.bytes);
-        page.drawImage(embedded, { x: drawX, y: drawYTop - textImage.height, width: textImage.width, height: textImage.height });
-      } else {
-        const rectW = width * (action.widthPct / 100);
-        const rectH = action.size;
-        page.drawRectangle({
-          x,
-          y: topY - rectH,
-          width: rectW,
-          height: rectH,
-          borderColor: color,
-          borderWidth: action.tool === 'rect' ? 1.5 : 0,
-          color,
-          opacity: action.tool === 'highlight' ? 0.28 : 0.08,
-          borderOpacity: 0.9
-        });
-      }
-    }
-    const outName = pdfEditorFile.name.replace(/\.pdf$/i, '') + '_edited.pdf';
-    download(await doc.save(), outName);
-    statusEl.className = 'alert alert-success';
-    statusEl.textContent = `Xong: đã xuất ${outName}`;
+    statusEl.textContent = `Xong! Đã xuất ${outName} với ${allActions.length} thay đổi.`;
   } catch (e) {
     statusEl.className = 'alert alert-danger';
-    statusEl.textContent = 'Lỗi edit PDF: ' + e.message;
+    statusEl.textContent = 'Lỗi: ' + e.message;
   } finally {
     btn.disabled = false;
   }
