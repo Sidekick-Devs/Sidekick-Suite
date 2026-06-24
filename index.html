@@ -2449,6 +2449,7 @@ function _setPdfEditorTool(tool) {
       obj.set('borderColor', tool === 'edit-text' ? 'rgba(0,119,253,0.7)' : 'transparent');
       if (!obj.data.changed) {
         obj.set({ opacity: tool === 'edit-text' ? 1 : 0, backgroundColor: tool === 'edit-text' ? 'rgba(0,119,253,0.12)' : 'transparent', fill: 'transparent' });
+        obj.dirty = true;
       }
     }
   });
@@ -2704,7 +2705,8 @@ function _reapplyToolModeToObjects() {
       obj.evented = isEditText;
       if (!obj.data.changed) {
         obj.opacity = isEditText ? 1 : 0;
-        obj.backgroundColor = isEditText ? 'rgba(0,119,253,0.12)' : 'transparent';
+        obj.set('backgroundColor', isEditText ? 'rgba(0,119,253,0.12)' : 'transparent');
+        obj.dirty = true;
       }
     }
   });
@@ -2974,6 +2976,7 @@ function _addDetectedTextToCanvas(blocks, zoom) {
       borderColor: 'rgba(0,119,253,0.7)',
       cornerColor: 'rgba(0,119,253,0.9)',
       opacity: 0,
+      objectCaching: false,
       data: {
         type: 'detected',
         originalRect: block.rect,  // in PDF points (Y from top, PyMuPDF)
