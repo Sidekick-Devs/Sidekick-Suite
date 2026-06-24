@@ -390,17 +390,20 @@
     .pdf-editor-stage {
       flex: 1;
       min-height: 460px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
+      overflow: auto;
       background: #d8d8d8;
       padding: 20px;
-      overflow: auto;
+      /* Use min-content width so the scroll container always expands to fit the canvas.
+         The canvas-wrap uses margin:auto to center when smaller than the viewport,
+         but scrolls left/right without clipping when larger — fixing the justify-content:center
+         trap where the left side becomes unreachable on overflow. */
+      min-width: min-content;
     }
     [data-theme="dark"] .pdf-editor-stage { background: #111; }
     .pdf-editor-canvas-wrap {
       position: relative;
-      flex-shrink: 0;
+      display: block;
+      margin: 0 auto;
       line-height: 0;
       box-shadow: 0 8px 32px rgba(0,0,0,0.22);
     }
