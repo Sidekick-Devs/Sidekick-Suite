@@ -440,12 +440,19 @@
     }
     .pdf-edit-shell {
       display: grid;
-      grid-template-columns: 148px minmax(0, 1fr) 310px;
+      grid-template-columns: 220px minmax(0, 1fr);
       min-height: calc(100vh - 180px);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       overflow: hidden;
       background: var(--bg-secondary);
+    }
+    .pdf-left-col {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      background: var(--bg-primary);
     }
     .pdf-edit-toolbar {
       grid-column: 1 / -1;
@@ -514,10 +521,10 @@
     .opacity-row input[type=range] { flex: 1; }
     .opacity-val { font-size: 12px; color: var(--text-secondary); min-width: 32px; text-align: right; }
     .pdf-page-rail {
-      border-right: 1px solid var(--border);
-      background: var(--bg-primary);
+      flex: 1;
       overflow: auto;
       padding: 12px 10px;
+      border-top: 1px solid var(--border);
     }
     .pdf-page-thumb {
       width: 112px;
@@ -570,9 +577,9 @@
       flex-direction: column;
       gap: 12px;
       padding: 12px;
-      border-left: 1px solid var(--border);
       background: var(--bg-primary);
-      overflow: auto;
+      flex-shrink: 0;
+      overflow: visible;
     }
     .pdf-edit-panel-title {
       font-size: 10px;
@@ -839,8 +846,7 @@
       .grid-2, .grid-3, .grid-4, .check-grid, .stat-grid { grid-template-columns: 1fr 1fr; }
       .pdf-editor-layout, .reorder-preview-panel { grid-template-columns: 1fr; }
       .pdf-edit-shell { grid-template-columns: 1fr; }
-      .pdf-page-rail { display: none; }
-      .pdf-edit-sidepanel { border-left: 0; border-top: 1px solid var(--border); }
+      .pdf-left-col { display: none; }
     }
   </style>
 </head>
@@ -1426,8 +1432,105 @@
               <span id="edit-info-text" style="font-size:11px;color:var(--text-tertiary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
             </div>
 
-            <!-- ── Left: page rail ── -->
-            <aside class="pdf-page-rail" id="edit-page-rail"></aside>
+            <!-- ── Left: properties panel (frozen top) + page thumbnails (scrollable) ── -->
+            <div class="pdf-left-col">
+
+              <!-- Properties panel — frozen at top -->
+              <div class="pdf-edit-sidepanel">
+
+                <!-- Text properties -->
+                <div class="prop-section" id="edit-text-props">
+                  <div class="pdf-edit-panel-title">Text</div>
+                  <div>
+                    <div class="prop-label">Font</div>
+                    <select id="edit-font-family" onchange="applyFabricProp('fontFamily', this.value)" style="width:100%;padding:5px 6px;">
+                      <option value="helv">Helvetica</option>
+                      <option value="tiro">Times New Roman</option>
+                      <option value="cour">Courier</option>
+                      <option value="noto">Noto Sans (Tiếng Việt)</option>
+                    </select>
+                  </div>
+                  <div class="fmt-btn-row">
+                    <button class="fmt-btn" id="btn-bold" onclick="toggleFabricFormat('bold')" title="Bold"><b>B</b></button>
+                    <button class="fmt-btn" id="btn-italic" onclick="toggleFabricFormat('italic')" title="Italic"><i>I</i></button>
+                    <button class="fmt-btn" id="btn-underline" onclick="toggleFabricFormat('underline')" title="Underline"><u>U</u></button>
+                    <div style="flex:1;"></div>
+                    <button class="fmt-btn" id="btn-align-left" onclick="applyFabricProp('textAlign','left')" title="Align left">⬅</button>
+                    <button class="fmt-btn" id="btn-align-center" onclick="applyFabricProp('textAlign','center')" title="Center">≡</button>
+                    <button class="fmt-btn" id="btn-align-right" onclick="applyFabricProp('textAlign','right')" title="Align right">➡</button>
+                  </div>
+                  <div class="prop-row">
+                    <div style="flex:1;">
+                      <div class="prop-label">Size (pt)</div>
+                      <input type="number" id="edit-size" min="6" max="144" value="12" style="width:100%;" oninput="applyFabricProp('fontSize', parseFloat(this.value) * pdfEditorZoom)">
+                    </div>
+                    <div style="flex:1;">
+                      <div class="prop-label">Color</div>
+                      <input type="color" id="edit-color" value="#000000" oninput="applyFabricProp('fill', this.value)" style="width:100%;height:32px;">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="panel-divider"></div>
+
+                <!-- Stroke/fill for shapes -->
+                <div class="prop-section" id="edit-shape-props" style="display:none;">
+                  <div class="pdf-edit-panel-title">Shape</div>
+                  <div class="prop-row">
+                    <div style="flex:1;">
+                      <div class="prop-label">Stroke</div>
+                      <input type="color" id="edit-stroke-color" value="#000000" oninput="applyFabricProp('stroke',this.value)" style="width:100%;height:32px;">
+                    </div>
+                    <div style="flex:1;">
+                      <div class="prop-label">Fill</div>
+                      <input type="color" id="edit-fill-color" value="#ffffff" oninput="applyFabricProp('fill',this.value)" style="width:100%;height:32px;">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Opacity -->
+                <div class="prop-section">
+                  <div class="prop-label">Opacity</div>
+                  <div class="opacity-row">
+                    <input type="range" id="edit-opacity" min="0" max="100" value="100" oninput="applyFabricProp('opacity', this.value/100); document.getElementById('edit-opacity-val').textContent=this.value+'%'">
+                    <span class="opacity-val" id="edit-opacity-val">100%</span>
+                  </div>
+                </div>
+
+                <!-- Object layer controls -->
+                <div class="prop-section">
+                  <div class="prop-label">Layer</div>
+                  <div class="fmt-btn-row" style="gap:4px;">
+                    <button class="tool-btn" style="flex:1;" onclick="bringFabricObjForward()">↑ Forward</button>
+                    <button class="tool-btn" style="flex:1;" onclick="sendFabricObjBackward()">↓ Backward</button>
+                  </div>
+                </div>
+
+                <!-- Draw props -->
+                <div class="prop-section" id="edit-draw-props" style="display:none;">
+                  <div class="pdf-edit-panel-title">Draw</div>
+                  <div class="prop-row">
+                    <div style="flex:1;">
+                      <div class="prop-label">Color</div>
+                      <input type="color" id="edit-draw-color" value="#e53935" oninput="if(fabricCanvas) fabricCanvas.freeDrawingBrush.color=this.value;" style="width:100%;height:32px;">
+                    </div>
+                    <div style="flex:1;">
+                      <div class="prop-label">Width</div>
+                      <input type="number" id="edit-draw-width" min="1" max="40" value="3" style="width:100%;" oninput="if(fabricCanvas) fabricCanvas.freeDrawingBrush.width=parseInt(this.value)||3;">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="panel-divider"></div>
+
+                <div class="pdf-edit-panel-title">Changes (<span id="edit-change-count">0</span>)</div>
+                <div class="alert alert-info" id="edit-status" style="font-size:12px;">Mở PDF để bắt đầu.</div>
+                <button class="pdf-save-btn" onclick="exportEditedPdf()" id="edit-btn">💾 Save PDF</button>
+              </div>
+
+              <!-- Page thumbnails — scrollable below -->
+              <aside class="pdf-page-rail" id="edit-page-rail"></aside>
+            </div>
 
             <!-- ── Center: canvas workspace ── -->
             <section class="pdf-edit-workspace">
@@ -1450,100 +1553,6 @@
               </div>
             </section>
 
-            <!-- ── Right: properties panel ── -->
-            <aside class="pdf-edit-sidepanel">
-
-              <!-- Text properties -->
-              <div class="prop-section" id="edit-text-props">
-                <div class="pdf-edit-panel-title">Text</div>
-                <div>
-                  <div class="prop-label">Font</div>
-                  <select id="edit-font-family" onchange="applyFabricProp('fontFamily', this.value)" style="width:100%;padding:5px 6px;">
-                    <option value="helv">Helvetica</option>
-                    <option value="tiro">Times New Roman</option>
-                    <option value="cour">Courier</option>
-                    <option value="noto">Noto Sans (Tiếng Việt)</option>
-                  </select>
-                </div>
-                <div class="fmt-btn-row">
-                  <button class="fmt-btn" id="btn-bold" onclick="toggleFabricFormat('bold')" title="Bold"><b>B</b></button>
-                  <button class="fmt-btn" id="btn-italic" onclick="toggleFabricFormat('italic')" title="Italic"><i>I</i></button>
-                  <button class="fmt-btn" id="btn-underline" onclick="toggleFabricFormat('underline')" title="Underline"><u>U</u></button>
-                  <div style="flex:1;"></div>
-                  <button class="fmt-btn" id="btn-align-left" onclick="applyFabricProp('textAlign','left')" title="Align left">⬅</button>
-                  <button class="fmt-btn" id="btn-align-center" onclick="applyFabricProp('textAlign','center')" title="Center">≡</button>
-                  <button class="fmt-btn" id="btn-align-right" onclick="applyFabricProp('textAlign','right')" title="Align right">➡</button>
-                </div>
-                <div class="prop-row">
-                  <div style="flex:1;">
-                    <div class="prop-label">Size (pt)</div>
-                    <input type="number" id="edit-size" min="6" max="144" value="12" style="width:100%;" oninput="applyFabricProp('fontSize', parseFloat(this.value) * pdfEditorZoom)">
-                  </div>
-                  <div style="flex:1;">
-                    <div class="prop-label">Color</div>
-                    <div class="color-input-row" style="gap:4px;">
-                      <input type="color" id="edit-color" value="#000000" oninput="applyFabricProp('fill', this.value)" style="flex:1;height:32px;">
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel-divider"></div>
-
-              <!-- Stroke/fill for shapes -->
-              <div class="prop-section" id="edit-shape-props" style="display:none;">
-                <div class="pdf-edit-panel-title">Shape</div>
-                <div class="prop-row">
-                  <div style="flex:1;">
-                    <div class="prop-label">Stroke</div>
-                    <input type="color" id="edit-stroke-color" value="#000000" oninput="applyFabricProp('stroke',this.value)" style="width:100%;height:32px;">
-                  </div>
-                  <div style="flex:1;">
-                    <div class="prop-label">Fill</div>
-                    <input type="color" id="edit-fill-color" value="#ffffff" oninput="applyFabricProp('fill',this.value)" style="width:100%;height:32px;">
-                  </div>
-                </div>
-              </div>
-
-              <!-- Opacity -->
-              <div class="prop-section">
-                <div class="prop-label">Opacity</div>
-                <div class="opacity-row">
-                  <input type="range" id="edit-opacity" min="0" max="100" value="100" oninput="applyFabricProp('opacity', this.value/100); document.getElementById('edit-opacity-val').textContent=this.value+'%'">
-                  <span class="opacity-val" id="edit-opacity-val">100%</span>
-                </div>
-              </div>
-
-              <!-- Object layer controls -->
-              <div class="prop-section">
-                <div class="prop-label">Layer</div>
-                <div class="fmt-btn-row" style="gap:4px;">
-                  <button class="tool-btn" style="flex:1;" onclick="bringFabricObjForward()">↑ Forward</button>
-                  <button class="tool-btn" style="flex:1;" onclick="sendFabricObjBackward()">↓ Backward</button>
-                </div>
-              </div>
-
-              <!-- Draw color when in draw mode -->
-              <div class="prop-section" id="edit-draw-props" style="display:none;">
-                <div class="pdf-edit-panel-title">Draw</div>
-                <div class="prop-row">
-                  <div style="flex:1;">
-                    <div class="prop-label">Color</div>
-                    <input type="color" id="edit-draw-color" value="#e53935" oninput="if(fabricCanvas) fabricCanvas.freeDrawingBrush.color=this.value;" style="width:100%;height:32px;">
-                  </div>
-                  <div style="flex:1;">
-                    <div class="prop-label">Width</div>
-                    <input type="number" id="edit-draw-width" min="1" max="40" value="3" style="width:100%;" oninput="if(fabricCanvas) fabricCanvas.freeDrawingBrush.width=parseInt(this.value)||3;">
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel-divider"></div>
-
-              <div class="pdf-edit-panel-title">Changes (<span id="edit-change-count">0</span>)</div>
-              <div class="alert alert-info" id="edit-status" style="font-size:12px;">Mở PDF để bắt đầu.</div>
-              <button class="pdf-save-btn" onclick="exportEditedPdf()" id="edit-btn">💾 Save PDF</button>
-            </aside>
           </div>
         </div>
       </div>
