@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -379,6 +380,98 @@
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(29,158,117,0.14);
     }
+    .pdf-editor-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 14px;
+      align-items: start;
+    }
+    .pdf-editor-stage {
+      min-height: 460px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      overflow: auto;
+    }
+    .pdf-editor-canvas-wrap {
+      position: relative;
+      max-width: 100%;
+      line-height: 0;
+      background: white;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    }
+    .pdf-editor-canvas-wrap canvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    .pdf-editor-marker {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: rgba(29,158,117,0.18);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .pdf-text-hit {
+      position: absolute;
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 0;
+      margin: 0;
+      appearance: none;
+      cursor: text;
+      line-height: 1;
+    }
+    .pdf-text-hit:hover {
+      border-color: rgba(29,158,117,0.65);
+      background: rgba(29,158,117,0.12);
+    }
+    .pdf-text-hit.selected {
+      border-color: var(--accent);
+      background: rgba(29,158,117,0.2);
+    }
+    .pdf-editor-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+    }
+    .pdf-editor-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 180px;
+      overflow: auto;
+    }
+    .pdf-editor-action {
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-primary);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .color-input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .color-input-row input[type=color] {
+      width: 38px;
+      height: 34px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-primary);
+      cursor: pointer;
+    }
     .reorder-preview-panel {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 260px;
@@ -593,6 +686,7 @@
       .sidebar { width: 48px; }
       .nav-item span:not(.nav-icon) { display: none; }
       .grid-2, .grid-3, .grid-4, .check-grid, .stat-grid { grid-template-columns: 1fr 1fr; }
+      .pdf-editor-layout, .reorder-preview-panel { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -980,6 +1074,8 @@
         <span class="tag" onclick="switchPdf('reorder',this)">Đổi thứ tự trang</span>
         <span class="tag" onclick="switchPdf('rotate',this)">Xoay trang</span>
         <span class="tag" onclick="switchPdf('resize',this)">Resize trang</span>
+        <span class="tag" onclick="switchPdf('edit',this)">Edit PDF</span>
+        <span class="tag" onclick="switchPdf('word',this)">PDF -> Word</span>
         <span class="tag" onclick="switchPdf('pptx',this)">PDF → PPTX</span>
         <span class="tag" onclick="switchPdf('compress',this)">Nén PDF</span>
       </div>
@@ -1135,6 +1231,121 @@
         </div>
         <div class="btn-row">
           <button class="btn success" onclick="processPdf('resize')">📥 Resize & Tải về</button>
+        </div>
+      </div>
+
+      <!-- EDIT PDF -->
+      <div id="pdf-edit" style="display:none; flex-direction:column; gap:14px;">
+        <div class="drop-zone" id="drop-edit" onclick="document.getElementById('pdf-edit-file').click()">
+          <div class="drop-icon">&#9998;</div>Chọn file PDF cần edit
+        </div>
+        <input type="file" id="pdf-edit-file" accept=".pdf" style="display:none" onchange="loadPdfEditorFile(this)">
+
+        <div id="edit-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="edit-info-text"></div>
+          <div class="pdf-editor-layout">
+            <div>
+              <div class="pdf-editor-stage" id="edit-stage">
+                <div class="reorder-preview-empty">Click vào preview để đặt vị trí edit.</div>
+              </div>
+            </div>
+            <div class="pdf-editor-panel">
+              <div class="grid-2">
+                <div>
+                  <label class="field-label">Trang</label>
+                  <input type="number" id="edit-page" min="1" value="1" oninput="renderPdfEditorPage()">
+                </div>
+                <div>
+                  <label class="field-label">Công cụ</label>
+                  <select id="edit-tool" onchange="syncPdfEditorTool()">
+                    <option value="text">Text</option>
+                    <option value="replace">Replace text</option>
+                    <option value="highlight">Highlight</option>
+                    <option value="rect">Rectangle</option>
+                  </select>
+                </div>
+              </div>
+              <div class="alert alert-info" id="edit-selected-text">Chọn Replace text rồi click vào text trong preview.</div>
+              <div id="edit-text-wrap">
+                <label class="field-label">Text</label>
+                <textarea id="edit-text" placeholder="Nội dung cần thêm..." style="min-height:74px;"></textarea>
+              </div>
+              <div class="grid-2">
+                <div>
+                  <label class="field-label">X (%)</label>
+                  <input type="number" id="edit-x" min="0" max="100" value="12" oninput="updatePdfEditorMarker()">
+                </div>
+                <div>
+                  <label class="field-label">Y (%)</label>
+                  <input type="number" id="edit-y" min="0" max="100" value="12" oninput="updatePdfEditorMarker()">
+                </div>
+              </div>
+              <div class="grid-2">
+                <div>
+                  <label class="field-label">Font / height</label>
+                  <input type="number" id="edit-size" min="6" max="96" value="14" oninput="updatePdfEditorMarker()">
+                </div>
+                <div>
+                  <label class="field-label">Width</label>
+                  <input type="number" id="edit-width" min="4" max="100" value="28" oninput="updatePdfEditorMarker()">
+                </div>
+              </div>
+              <div class="color-input-row">
+                <div style="flex:1;">
+                  <label class="field-label">Màu</label>
+                  <input type="text" id="edit-color-text" value="#1D9E75" oninput="syncPdfEditorColor('text')">
+                </div>
+                <input type="color" id="edit-color" value="#1D9E75" oninput="syncPdfEditorColor('picker')">
+              </div>
+              <div class="btn-row">
+                <button class="btn primary" onclick="addPdfEditAction()">Thêm edit</button>
+                <button class="btn danger" onclick="clearPdfEditActions()">Xóa list</button>
+              </div>
+              <div class="pdf-editor-actions" id="edit-actions"></div>
+              <div class="alert alert-info" id="edit-status">Text/shape sẽ được ghi lên PDF khi export.</div>
+              <button class="btn success" onclick="exportEditedPdf()" id="edit-btn">Tải PDF đã edit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF TO WORD -->
+      <div id="pdf-word" style="display:none; flex-direction:column; gap:14px;">
+        <div class="drop-zone" id="drop-word" onclick="document.getElementById('pdf-word-file').click()">
+          <div class="drop-icon">&#128196;</div>Chọn file PDF để chuyển thành Word
+        </div>
+        <input type="file" id="pdf-word-file" accept=".pdf" style="display:none" onchange="loadPdfToWordFile(this)">
+
+        <div id="word-info" style="display:none; flex-direction:column; gap:12px;">
+          <div class="alert alert-success" id="word-info-text"></div>
+          <div class="grid-2">
+            <div>
+              <label class="field-label">Kiểu convert</label>
+              <select id="word-mode" onchange="syncWordMode()">
+                <option value="layout" selected>Layout tốt nhất - text thật</option>
+                <option value="text">Text sạch - dễ sửa</option>
+                <option value="ocr">OCR scan - tiếng Việt/English</option>
+                <option value="image">Ảnh từng trang - giữ layout</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Trang cần export</label>
+              <input type="text" id="word-pages" placeholder="Để trống = tất cả, VD: 1,3,5-8">
+            </div>
+          </div>
+          <div id="word-quality-wrap">
+            <label class="field-label">Chất lượng ảnh trang</label>
+            <select id="word-quality">
+              <option value="1.25">Standard - nhẹ hơn</option>
+              <option value="1.75" selected>High - cân bằng</option>
+              <option value="2.25">Very high - file nặng hơn</option>
+            </select>
+          </div>
+          <div class="alert alert-info" id="word-status">Backend sẽ convert PDF sang Word với text thật và giữ layout tốt nhất có thể.</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn success" onclick="convertPdfToWord()" id="word-btn">Convert sang Word</button>
         </div>
       </div>
 
@@ -1426,6 +1637,8 @@ function initFileDropZones() {
     ['drop-reorder', 'pdf-reorder-file'],
     ['drop-rotate', 'pdf-rot-file'],
     ['drop-resize', 'pdf-cmp-file'],
+    ['drop-edit', 'pdf-edit-file'],
+    ['drop-word', 'pdf-word-file'],
     ['drop-pptx', 'pdf-pptx-file'],
     ['drop-compress', 'pdf-comp-file']
   ].forEach(([zoneId, inputId]) => bindFileDropZone(zoneId, inputId));
@@ -1835,10 +2048,18 @@ convertColor('hex');
 // ────────────────────────────────────────────────────────
 // PDF
 // ────────────────────────────────────────────────────────
-const {PDFDocument, degrees} = PDFLib;
+const {PDFDocument, degrees, rgb} = PDFLib;
 let mergeFiles = [];
 let pdfToPptxFile = null;
+let pdfToWordFile = null;
 let pdfjsReady = null;
+let pdfEditorFile = null;
+let pdfEditorDoc = null;
+let pdfEditorJsDoc = null;
+let pdfEditorActions = [];
+let pdfEditorPageTextItems = [];
+let pdfEditorSelectedText = null;
+const PDF_API_BASE = localStorage.getItem('sidekickPdfApiBase') || 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 let reorderPageOrder = [];
 let reorderDragIndex = null;
 let reorderThumbObserver = null;
@@ -1859,7 +2080,7 @@ function ensurePdfJs() {
 }
 
 function switchPdf(mode, el) {
-  ['merge','split','delete','reorder','rotate','resize','pptx','compress'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
+  ['merge','split','delete','reorder','rotate','resize','edit','word','pptx','compress'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
   document.getElementById('pdf-'+mode).style.display='block';
   document.querySelectorAll('#tab-pdf .tag').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
@@ -1875,6 +2096,532 @@ function addMergeFiles(input) {
 }
 function removeMergeFile(btn, name) { mergeFiles=mergeFiles.filter(f=>f.name!==name); btn.closest('.file-item').remove(); }
 function clearMergeList() { mergeFiles=[]; document.getElementById('merge-list').innerHTML=''; }
+function hexToPdfRgb(hex) {
+  const m = String(hex || '#000000').trim().match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+  if (!m) return rgb(0, 0, 0);
+  return rgb(parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255);
+}
+function escapeXml(value) {
+  return String(value).replace(/[<>&'"]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[ch]));
+}
+function dataUrlToUint8Array(dataUrl) {
+  const base64 = dataUrl.split(',')[1] || '';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function makePdfTextImage(text, size, color, maxWidth) {
+  const scale = 3;
+  const lineHeight = size * 1.28;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Không tạo được canvas text');
+  ctx.font = `${size * scale}px Arial, sans-serif`;
+  const paragraphs = String(text).split(/\r?\n/);
+  const lines = [];
+  paragraphs.forEach(paragraph => {
+    const words = paragraph.split(/\s+/).filter(Boolean);
+    if (!words.length) {
+      lines.push('');
+      return;
+    }
+    let line = '';
+    words.forEach(word => {
+      const next = line ? `${line} ${word}` : word;
+      if (ctx.measureText(next).width > maxWidth * scale && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = next;
+      }
+    });
+    lines.push(line);
+  });
+  const measuredWidth = Math.max(20, ...lines.map(line => ctx.measureText(line || ' ').width / scale));
+  const width = Math.min(maxWidth, measuredWidth + 4);
+  const height = Math.max(lineHeight, lines.length * lineHeight);
+  canvas.width = Math.ceil(width * scale);
+  canvas.height = Math.ceil(height * scale);
+  ctx.scale(scale, scale);
+  ctx.font = `${size}px Arial, sans-serif`;
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'top';
+  lines.forEach((line, index) => ctx.fillText(line, 0, index * lineHeight, maxWidth));
+  return { bytes: dataUrlToUint8Array(canvas.toDataURL('image/png')), width, height };
+}
+function syncPdfEditorColor(source) {
+  const picker = document.getElementById('edit-color');
+  const text = document.getElementById('edit-color-text');
+  if (source === 'picker') text.value = picker.value;
+  else if (/^#[0-9a-f]{6}$/i.test(text.value.trim())) picker.value = text.value.trim();
+}
+function syncPdfEditorTool() {
+  const tool = document.getElementById('edit-tool').value;
+  document.getElementById('edit-text-wrap').style.display = (tool === 'text' || tool === 'replace') ? 'block' : 'none';
+  document.getElementById('edit-selected-text').style.display = tool === 'replace' ? 'block' : 'none';
+  updatePdfEditorMarker();
+}
+function updatePdfEditorMarker() {
+  const wrap = document.querySelector('#edit-stage .pdf-editor-canvas-wrap');
+  if (!wrap) return;
+  let marker = wrap.querySelector('.pdf-editor-marker');
+  if (!marker) {
+    marker = document.createElement('div');
+    marker.className = 'pdf-editor-marker';
+    wrap.appendChild(marker);
+  }
+  const tool = document.getElementById('edit-tool').value;
+  const x = Math.max(0, Math.min(100, parseFloat(document.getElementById('edit-x').value || '0')));
+  const y = Math.max(0, Math.min(100, parseFloat(document.getElementById('edit-y').value || '0')));
+  const size = Math.max(4, parseFloat(document.getElementById('edit-size').value || '14'));
+  const width = Math.max(4, parseFloat(document.getElementById('edit-width').value || '28'));
+  marker.style.left = `${x}%`;
+  marker.style.top = `${y}%`;
+  marker.style.borderColor = document.getElementById('edit-color').value;
+  marker.style.background = tool === 'highlight' ? `${document.getElementById('edit-color').value}44` : 'transparent';
+  marker.style.width = (tool === 'text' || tool === 'replace') ? `${Math.max(18, width)}px` : `${width}%`;
+  marker.style.height = (tool === 'text' || tool === 'replace') ? `${Math.max(12, size)}px` : `${size}px`;
+}
+function selectPdfEditorText(index) {
+  const item = pdfEditorPageTextItems[index];
+  if (!item) return;
+  pdfEditorSelectedText = item;
+  document.querySelectorAll('#edit-stage .pdf-text-hit').forEach(el => el.classList.remove('selected'));
+  const hit = document.querySelector(`#edit-stage .pdf-text-hit[data-index="${index}"]`);
+  if (hit) hit.classList.add('selected');
+  document.getElementById('edit-tool').value = 'replace';
+  document.getElementById('edit-text').value = item.text;
+  document.getElementById('edit-page').value = item.page;
+  document.getElementById('edit-x').value = item.xPct.toFixed(1);
+  document.getElementById('edit-y').value = item.yPct.toFixed(1);
+  document.getElementById('edit-size').value = Math.max(8, Math.round(item.height));
+  document.getElementById('edit-width').value = Math.max(4, item.widthPct).toFixed(1);
+  document.getElementById('edit-selected-text').textContent = `Đang chọn: "${item.text.slice(0, 90)}"`;
+  syncPdfEditorTool();
+}
+async function renderPdfEditorPage() {
+  if (!pdfEditorJsDoc) return;
+  pdfEditorSelectedText = null;
+  pdfEditorPageTextItems = [];
+  const pageInput = document.getElementById('edit-page');
+  const pageNumber = Math.max(1, Math.min(pdfEditorJsDoc.numPages, parseInt(pageInput.value || '1', 10)));
+  pageInput.value = pageNumber;
+  const stage = document.getElementById('edit-stage');
+  stage.innerHTML = '<div class="reorder-preview-empty">Đang render preview...</div>';
+  try {
+    const page = await pdfEditorJsDoc.getPage(pageNumber);
+    const editorScale = 1.15;
+    const viewport = page.getViewport({ scale: editorScale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('Không tạo được canvas preview');
+    await page.render({ canvasContext: ctx, viewport, background: 'rgb(255,255,255)' }).promise;
+    const wrap = document.createElement('div');
+    wrap.className = 'pdf-editor-canvas-wrap';
+    wrap.appendChild(canvas);
+    const textContent = await page.getTextContent();
+    pdfEditorPageTextItems = textContent.items
+      .map(item => {
+        const tx = item.transform[4];
+        const ty = item.transform[5];
+        const itemWidth = Math.max(item.width || 1, 1);
+        const itemHeight = Math.max(item.height || Math.abs(item.transform[3]) || 10, 1);
+        const rect = viewport.convertToViewportRectangle([tx, ty, tx + itemWidth, ty + itemHeight]);
+        const left = Math.min(rect[0], rect[2]);
+        const top = Math.min(rect[1], rect[3]);
+        const right = Math.max(rect[0], rect[2]);
+        const bottom = Math.max(rect[1], rect[3]);
+        return {
+          text: item.str || '',
+          page: pageNumber,
+          x: tx,
+          y: ty,
+          width: itemWidth,
+          height: itemHeight,
+          xPct: (tx / (viewport.width / editorScale)) * 100,
+          yPct: (1 - (ty / (viewport.height / editorScale))) * 100,
+          widthPct: (itemWidth / (viewport.width / editorScale)) * 100,
+          left,
+          top,
+          widthPx: Math.max(4, right - left),
+          heightPx: Math.max(6, bottom - top)
+        };
+      })
+      .filter(item => item.text.trim());
+    pdfEditorPageTextItems.forEach((item, index) => {
+      const hit = document.createElement('button');
+      hit.type = 'button';
+      hit.className = 'pdf-text-hit';
+      hit.dataset.index = String(index);
+      hit.title = item.text;
+      hit.style.left = `${item.left}px`;
+      hit.style.top = `${item.top}px`;
+      hit.style.width = `${item.widthPx}px`;
+      hit.style.height = `${item.heightPx}px`;
+      hit.addEventListener('click', event => {
+        event.stopPropagation();
+        selectPdfEditorText(index);
+      });
+      wrap.appendChild(hit);
+    });
+    wrap.addEventListener('click', event => {
+      const rect = wrap.getBoundingClientRect();
+      document.getElementById('edit-x').value = (((event.clientX - rect.left) / rect.width) * 100).toFixed(1);
+      document.getElementById('edit-y').value = (((event.clientY - rect.top) / rect.height) * 100).toFixed(1);
+      updatePdfEditorMarker();
+    });
+    stage.innerHTML = '';
+    stage.appendChild(wrap);
+    document.getElementById('edit-selected-text').textContent = 'Chọn Replace text rồi click vào text trong preview.';
+    updatePdfEditorMarker();
+  } catch (e) {
+    stage.innerHTML = `<div class="reorder-preview-empty">Không render được preview: ${escapeXml(e.message)}</div>`;
+  }
+}
+function renderPdfEditActions() {
+  const list = document.getElementById('edit-actions');
+  if (!pdfEditorActions.length) {
+    list.innerHTML = '<div class="pdf-editor-action">Chưa có edit nào.</div>';
+    return;
+  }
+  list.innerHTML = pdfEditorActions.map((action, index) => {
+    const label = (action.tool === 'text' || action.tool === 'replace') ? `${action.tool}: ${escapeXml(action.text || '').slice(0, 40)}` : action.tool;
+    return `<div class="pdf-editor-action">Trang ${action.page}: ${label}<button class="file-item-remove" style="float:right;" onclick="removePdfEditAction(${index})">×</button></div>`;
+  }).join('');
+}
+function addPdfEditAction() {
+  if (!pdfEditorDoc) { alert('Chưa chọn file PDF'); return; }
+  const tool = document.getElementById('edit-tool').value;
+  const text = document.getElementById('edit-text').value;
+  if ((tool === 'text' || tool === 'replace') && !text.trim()) { alert('Nhập text cần thêm'); return; }
+  if (tool === 'replace' && (!pdfEditorSelectedText || pdfEditorSelectedText.page !== parseInt(document.getElementById('edit-page').value || '1', 10))) {
+    alert('Chọn text cần thay trong preview trước');
+    return;
+  }
+  pdfEditorActions.push({
+    tool,
+    text,
+    page: parseInt(document.getElementById('edit-page').value || '1', 10),
+    xPct: parseFloat(document.getElementById('edit-x').value || '0'),
+    yPct: parseFloat(document.getElementById('edit-y').value || '0'),
+    size: parseFloat(document.getElementById('edit-size').value || '14'),
+    widthPct: parseFloat(document.getElementById('edit-width').value || '28'),
+    color: document.getElementById('edit-color').value,
+    sourceText: pdfEditorSelectedText ? pdfEditorSelectedText.text : '',
+    rect: tool === 'replace' ? {
+      x: pdfEditorSelectedText.x,
+      y: pdfEditorSelectedText.y,
+      width: pdfEditorSelectedText.width,
+      height: pdfEditorSelectedText.height
+    } : null
+  });
+  renderPdfEditActions();
+  document.getElementById('edit-status').textContent = `${pdfEditorActions.length} edit đang chờ export.`;
+}
+function removePdfEditAction(index) {
+  pdfEditorActions.splice(index, 1);
+  renderPdfEditActions();
+}
+function clearPdfEditActions() {
+  pdfEditorActions = [];
+  renderPdfEditActions();
+  document.getElementById('edit-status').textContent = 'Text/shape sẽ được ghi lên PDF khi export.';
+}
+async function loadPdfEditorFile(input) {
+  const f = input.files[0];
+  if (!f) return;
+  pdfEditorFile = f;
+  pdfEditorActions = [];
+  const infoEl = document.getElementById('edit-info');
+  const statusEl = document.getElementById('edit-status');
+  infoEl.style.display = 'flex';
+  statusEl.className = 'alert alert-info';
+  statusEl.textContent = 'Đang nạp PDF...';
+  try {
+    const bytes = await f.arrayBuffer();
+    pdfEditorDoc = await PDFDocument.load(bytes);
+    const pdfjsLib = await ensurePdfJs();
+    pdfEditorJsDoc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+    document.getElementById('edit-page').max = String(pdfEditorDoc.getPageCount());
+    document.getElementById('edit-page').value = '1';
+    document.getElementById('edit-info-text').textContent = `📄 ${f.name} — ${pdfEditorDoc.getPageCount()} trang, ${(f.size/1024).toFixed(0)} KB`;
+    renderPdfEditActions();
+    syncPdfEditorTool();
+    await renderPdfEditorPage();
+    statusEl.textContent = 'Click lên preview để chọn vị trí, thêm edit rồi export.';
+  } catch (e) {
+    pdfEditorFile = null;
+    pdfEditorDoc = null;
+    pdfEditorJsDoc = null;
+    statusEl.className = 'alert alert-danger';
+    statusEl.textContent = 'Không đọc được PDF: ' + e.message;
+  }
+}
+async function exportEditedPdf() {
+  if (!pdfEditorFile) { alert('Chưa chọn file PDF'); return; }
+  if (!pdfEditorActions.length) { alert('Chưa có edit nào'); return; }
+  const btn = document.getElementById('edit-btn');
+  const statusEl = document.getElementById('edit-status');
+  btn.disabled = true;
+  try {
+    statusEl.className = 'alert alert-info';
+    statusEl.textContent = 'Đang gửi backend để edit PDF...';
+    const form = new FormData();
+    form.append('file', pdfEditorFile, pdfEditorFile.name);
+    form.append('actions', JSON.stringify(pdfEditorActions));
+    const res = await fetch(`${PDF_API_BASE}/pdf/edit-text`, { method: 'POST', mode: 'cors', body: form });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => res.statusText);
+      throw new Error(detail || res.statusText);
+    }
+    const blob = await res.blob();
+    const outName = pdfEditorFile.name.replace(/\.pdf$/i, '') + '_edited.pdf';
+    downloadBlob(blob, outName);
+    statusEl.className = 'alert alert-success';
+    statusEl.textContent = `Xong: đã xuất ${outName}`;
+  } catch (e) {
+    statusEl.className = 'alert alert-info';
+    statusEl.textContent = 'Backend chưa sẵn sàng, đang fallback xử lý trong browser...';
+    await exportEditedPdfClient();
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function exportEditedPdfClient() {
+  if (!pdfEditorFile) { alert('Chưa chọn file PDF'); return; }
+  if (!pdfEditorActions.length) { alert('Chưa có edit nào'); return; }
+  const btn = document.getElementById('edit-btn');
+  const statusEl = document.getElementById('edit-status');
+  btn.disabled = true;
+  try {
+    statusEl.className = 'alert alert-info';
+    statusEl.textContent = 'Đang ghi edit vào PDF...';
+    const doc = await PDFDocument.load(await pdfEditorFile.arrayBuffer());
+    for (const action of pdfEditorActions) {
+      const page = doc.getPage(action.page - 1);
+      const { width, height } = page.getSize();
+      const x = width * (action.xPct / 100);
+      const topY = height * (1 - action.yPct / 100);
+      const color = hexToPdfRgb(action.color);
+      if (action.tool === 'text' || action.tool === 'replace') {
+        const replaceRect = action.tool === 'replace' && action.rect ? action.rect : null;
+        const drawX = replaceRect ? replaceRect.x : x;
+        const drawYTop = replaceRect ? replaceRect.y + replaceRect.height : topY;
+        const maxTextWidth = replaceRect ? Math.max(replaceRect.width * 1.15, 12) : width * (action.widthPct / 100);
+        if (replaceRect) {
+          page.drawRectangle({
+            x: Math.max(0, replaceRect.x - 1),
+            y: Math.max(0, replaceRect.y - 2),
+            width: Math.min(width - replaceRect.x, replaceRect.width + 3),
+            height: replaceRect.height + 4,
+            color: rgb(1, 1, 1),
+            opacity: 1
+          });
+        }
+        const textImage = makePdfTextImage(action.text, action.size, action.color, maxTextWidth);
+        const embedded = await doc.embedPng(textImage.bytes);
+        page.drawImage(embedded, { x: drawX, y: drawYTop - textImage.height, width: textImage.width, height: textImage.height });
+      } else {
+        const rectW = width * (action.widthPct / 100);
+        const rectH = action.size;
+        page.drawRectangle({
+          x,
+          y: topY - rectH,
+          width: rectW,
+          height: rectH,
+          borderColor: color,
+          borderWidth: action.tool === 'rect' ? 1.5 : 0,
+          color,
+          opacity: action.tool === 'highlight' ? 0.28 : 0.08,
+          borderOpacity: 0.9
+        });
+      }
+    }
+    const outName = pdfEditorFile.name.replace(/\.pdf$/i, '') + '_edited.pdf';
+    download(await doc.save(), outName);
+    statusEl.className = 'alert alert-success';
+    statusEl.textContent = `Xong: đã xuất ${outName}`;
+  } catch (e) {
+    statusEl.className = 'alert alert-danger';
+    statusEl.textContent = 'Lỗi edit PDF: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+function loadPdfToWordFile(input) {
+  const f = input.files[0];
+  if (!f) return;
+  pdfToWordFile = f;
+  const infoEl = document.getElementById('word-info');
+  infoEl.style.display = 'flex';
+  infoEl.style.flexDirection = 'column';
+  infoEl.style.gap = '12px';
+  document.getElementById('word-info-text').textContent = `📄 ${f.name} — ${(f.size / 1024).toFixed(0)} KB`;
+  document.getElementById('word-status').className = 'alert alert-info';
+  syncWordMode();
+}
+function docxContentTypes(imageCount) {
+  const imageOverrides = Array.from({length:imageCount}, (_,i) => `<Override PartName="/word/media/page${i + 1}.jpg" ContentType="image/jpeg"/>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${imageOverrides}</Types>`;
+}
+function docxDocumentXml(images) {
+  const body = images.map((img, i) => {
+    const cx = Math.round(img.widthIn * 914400);
+    const cy = Math.round(img.heightIn * 914400);
+    return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${i + 1}" name="PDF page ${i + 1}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${i + 1}" name="page${i + 1}.jpg"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId${i + 1}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>${i < images.length - 1 ? '<w:p><w:r><w:br w:type="page"/></w:r></w:p>' : ''}`;
+  }).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" mc:Ignorable="w14 wp14"><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="360" w:right="360" w:bottom="360" w:left="360" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+}
+function docxDocumentRels(count) {
+  const rels = Array.from({length:count}, (_,i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/page${i + 1}.jpg"/>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`;
+}
+function syncWordMode() {
+  const mode = document.getElementById('word-mode').value;
+  document.getElementById('word-quality-wrap').style.display = mode === 'image' ? 'block' : 'none';
+  const messages = {
+    layout: 'Backend sẽ convert PDF sang Word với text thật và giữ layout tốt nhất có thể.',
+    text: 'Backend sẽ trích text thật thành Word sạch, dễ sửa.',
+    ocr: 'Backend sẽ OCR PDF scan thành text trong Word.',
+    image: 'Mỗi trang PDF sẽ thành 1 ảnh trong file .docx.'
+  };
+  document.getElementById('word-status').textContent = messages[mode] || messages.layout;
+}
+function extractTextLinesFromPdfItems(items) {
+  const rows = items
+    .filter(item => item.str && item.str.trim())
+    .map(item => ({ text: item.str.trim(), x: item.transform[4], y: item.transform[5] }))
+    .sort((a, b) => Math.abs(b.y - a.y) > 4 ? b.y - a.y : a.x - b.x);
+  const lines = [];
+  rows.forEach(item => {
+    let line = lines[lines.length - 1];
+    if (!line || Math.abs(line.y - item.y) > 4) {
+      line = { y: item.y, parts: [] };
+      lines.push(line);
+    }
+    line.parts.push(item);
+  });
+  return lines.map(line => line.parts.sort((a, b) => a.x - b.x).map(part => part.text).join(' '));
+}
+function docxTextDocumentXml(pages) {
+  const body = pages.map((lines, pageIndex) => {
+    const paragraphs = lines.length ? lines : [''];
+    return paragraphs.map(line => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(line)}</w:t></w:r></w:p>`).join('') +
+      (pageIndex < pages.length - 1 ? '<w:p><w:r><w:br w:type="page"/></w:r></w:p>' : '');
+  }).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+}
+async function convertPdfToWord() {
+  if (!pdfToWordFile) { alert('Chưa chọn file PDF'); return; }
+  const mode = document.getElementById('word-mode').value;
+  if (mode === 'image') return convertPdfToWordClient();
+
+  const btn = document.getElementById('word-btn');
+  const statusEl = document.getElementById('word-status');
+  btn.disabled = true;
+  try {
+    statusEl.className = 'alert alert-info';
+    statusEl.textContent = mode === 'ocr' ? 'Đang OCR PDF trên backend...' : 'Đang convert PDF sang Word trên backend...';
+    const form = new FormData();
+    form.append('file', pdfToWordFile, pdfToWordFile.name);
+    form.append('mode', mode);
+    form.append('pages', document.getElementById('word-pages').value || '');
+    const res = await fetch(`${PDF_API_BASE}/pdf/convert-word`, { method: 'POST', mode: 'cors', body: form });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => res.statusText);
+      throw new Error(detail || res.statusText);
+    }
+    const blob = await res.blob();
+    const outName = pdfToWordFile.name.replace(/\.pdf$/i, '') + '.docx';
+    downloadBlob(blob, outName);
+    statusEl.className = 'alert alert-success';
+    statusEl.textContent = `Xong: đã xuất ${outName}`;
+  } catch (e) {
+    statusEl.className = 'alert alert-info';
+    statusEl.textContent = 'Backend chưa sẵn sàng hoặc convert lỗi, fallback sang text client-side...';
+    document.getElementById('word-mode').value = 'text';
+    await convertPdfToWordClient();
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function convertPdfToWordClient() {
+  if (!pdfToWordFile) { alert('Chưa chọn file PDF'); return; }
+  if (typeof JSZip === 'undefined') { alert('Chưa tải được thư viện tạo Word'); return; }
+  const btn = document.getElementById('word-btn');
+  const statusEl = document.getElementById('word-status');
+  btn.disabled = true;
+  try {
+    statusEl.className = 'alert alert-info';
+    statusEl.textContent = 'Đang nạp PDF...';
+    const pdfjsLib = await ensurePdfJs();
+    const bytes = await pdfToWordFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+    const selectedPages = parsePageList(document.getElementById('word-pages').value, pdf.numPages);
+    if (!selectedPages.length) throw new Error('Không có trang hợp lệ để export');
+    const mode = document.getElementById('word-mode').value;
+    const quality = parseFloat(document.getElementById('word-quality').value || '1.75');
+    const zip = new JSZip();
+    const images = [];
+    let documentXml = '';
+    if (mode === 'text') {
+      const textPages = [];
+      for (let i = 0; i < selectedPages.length; i++) {
+        const pageNumber = selectedPages[i] + 1;
+        statusEl.textContent = `Đang trích text trang ${pageNumber}/${pdf.numPages} (${i + 1}/${selectedPages.length})...`;
+        const page = await pdf.getPage(pageNumber);
+        const textContent = await page.getTextContent();
+        textPages.push(extractTextLinesFromPdfItems(textContent.items));
+      }
+      documentXml = docxTextDocumentXml(textPages);
+    } else {
+      for (let i = 0; i < selectedPages.length; i++) {
+        const pageNumber = selectedPages[i] + 1;
+        statusEl.textContent = `Đang render trang ${pageNumber}/${pdf.numPages} (${i + 1}/${selectedPages.length})...`;
+        const page = await pdf.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: quality });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) throw new Error('Không tạo được canvas để render trang PDF');
+        await page.render({ canvasContext: ctx, viewport, background: 'rgb(255,255,255)' }).promise;
+        const ratio = viewport.width / viewport.height;
+        const maxW = 7.7;
+        const maxH = 10;
+        let widthIn = maxW;
+        let heightIn = widthIn / ratio;
+        if (heightIn > maxH) {
+          heightIn = maxH;
+          widthIn = heightIn * ratio;
+        }
+        images.push({ widthIn, heightIn });
+        zip.file(`word/media/page${i + 1}.jpg`, dataUrlToUint8Array(canvas.toDataURL('image/jpeg', 0.9)));
+      }
+      documentXml = docxDocumentXml(images);
+    }
+    zip.file('[Content_Types].xml', docxContentTypes(images.length));
+    zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>');
+    zip.file('word/_rels/document.xml.rels', docxDocumentRels(images.length));
+    zip.file('word/document.xml', documentXml);
+    zip.file('docProps/core.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${escapeXml(pdfToWordFile.name.replace(/\.pdf$/i, ''))}</dc:title><dc:creator>Sidekick Suites</dc:creator><cp:lastModifiedBy>Sidekick Suites</cp:lastModifiedBy></cp:coreProperties>`);
+    zip.file('docProps/app.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>Sidekick Suites</Application></Properties>');
+    statusEl.textContent = 'Đang đóng gói file Word...';
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const outName = pdfToWordFile.name.replace(/\.pdf$/i, '') + '.docx';
+    downloadBlob(blob, outName);
+    statusEl.className = 'alert alert-success';
+    statusEl.textContent = `Xong: ${selectedPages.length} trang đã được xuất thành ${outName}`;
+  } catch (e) {
+    statusEl.className = 'alert alert-danger';
+    statusEl.textContent = 'Lỗi convert Word: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
 function loadPdfToPptxFile(input) {
   const f = input.files[0];
   if (!f) return;
@@ -2386,7 +3133,7 @@ async function convertPdfToPptx() {
 // PDF COMPRESS
 // ────────────────────────────────────────────────────────
 let compFile = null;
-const GS_API_BASE = 'https://sidekick-backend-nnrbx53cwq-as.a.run.app';
+const GS_API_BASE = 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 
 function loadCompFile(input) {
   const f = input.files[0]; if (!f) return;
