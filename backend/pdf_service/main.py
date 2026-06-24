@@ -357,17 +357,18 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
         if tool == "replace":
             # Whiteout original text region then draw new text
             original_rect = _original_rect_from_action(page, action, rect)
-            page.add_redact_annot(_expand_rect(original_rect, -1, -3, 3, 4), fill=(1, 1, 1))
+            # Tight erase: 1pt padding on all sides — never expand bottom into adjacent blocks
+            page.add_redact_annot(_expand_rect(original_rect, -1, -1, 1, 1), fill=(1, 1, 1))
             page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
             text = str(action.get("text", ""))
             font_name, font_file = _resolve_font_for_text(font_family, bold, italic, text)
-            font_size = float(action.get("size") or max(9, rect.height * 0.75))
-            text_rect = _expand_rect(
-                rect,
-                0,
-                -font_size * 0.45,
-                max(rect.width * 0.25, font_size * 2),
-                max(rect.height * 0.65, font_size),
+            font_size = float(action.get("size") or max(9, original_rect.height * 0.75))
+            # Keep vertical bounds of original rect; expand right only if new text is likely wider
+            text_rect = fitz.Rect(
+                original_rect.x0,
+                original_rect.y0,
+                max(original_rect.x1, original_rect.x1 + font_size * 2),
+                original_rect.y1,  # never expand bottom — avoids covering blocks below
             )
             page.insert_textbox(
                 text_rect, text,
