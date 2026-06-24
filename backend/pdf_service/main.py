@@ -357,8 +357,8 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
         if tool == "replace":
             # Whiteout original text region then draw new text
             original_rect = _original_rect_from_action(page, action, rect)
-            # Tight erase: 1pt padding on all sides — never expand bottom into adjacent blocks
-            page.add_redact_annot(_expand_rect(original_rect, -1, -1, 1, 1), fill=(1, 1, 1))
+            # Erase: 1pt sides, 2pt top/bottom covers descenders & diacritics without bleeding into adjacent blocks
+            page.add_redact_annot(_expand_rect(original_rect, -1, -2, 1, 2), fill=(1, 1, 1))
             page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
             text = str(action.get("text", ""))
             font_name, font_file = _resolve_font_for_text(font_family, bold, italic, text)
