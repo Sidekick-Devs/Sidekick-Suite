@@ -106,7 +106,8 @@ def _parse_pages(pages: str | None, total: int) -> list[int]:
 
 def _safe_name(filename: str, suffix: str) -> str:
     stem = Path(filename).stem or "document"
-    clean = "".join(ch for ch in stem if ch.isalnum() or ch in ("-", "_", " ")).strip()
+    # HTTP headers must be ASCII; strip non-ASCII to avoid UnicodeEncodeError
+    clean = "".join(ch for ch in stem if ch.isascii() and (ch.isalnum() or ch in ("-", "_", " "))).strip()
     return f"{clean or 'document'}{suffix}"
 
 

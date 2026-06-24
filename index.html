@@ -1398,7 +1398,8 @@
 
             <!-- ── Toolbar (full-width top row) ── -->
             <div class="pdf-edit-toolbar">
-              <!-- Selection -->
+              <!-- Navigation -->
+              <button class="tool-btn" data-edit-tool="pan" onclick="setPdfEditorTool('pan')" title="Hand / Pan (Space)">✋ Hand</button>
               <button class="tool-btn" data-edit-tool="select" onclick="setPdfEditorTool('select')" title="Select / Move (V)">↖ Select</button>
               <div class="tool-sep"></div>
               <!-- Text tools -->
@@ -2418,9 +2419,15 @@ function _setPdfEditorTool(tool) {
     fabricCanvas.freeDrawingBrush.color = document.getElementById('edit-draw-color')?.value || '#e53935';
     fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById('edit-draw-width')?.value || '3');
     fabricCanvas.selection = false;
+    fabricCanvas.defaultCursor = 'crosshair';
+  } else if (tool === 'pan') {
+    fabricCanvas.isDrawingMode = false;
+    fabricCanvas.selection = false;
+    fabricCanvas.defaultCursor = 'grab';
   } else {
     fabricCanvas.isDrawingMode = false;
     fabricCanvas.selection = tool === 'select';
+    fabricCanvas.defaultCursor = 'default';
   }
   // In edit-text mode show detected boxes as transparent overlays (no duplicate text)
   fabricCanvas.getObjects().forEach(obj => {
@@ -2710,8 +2717,16 @@ function _setupFabricEvents() {
   fabricCanvas.on('selection:updated', (e) => _onFabricSelectionChange(e.selected?.[0]));
   fabricCanvas.on('selection:cleared', () => _onFabricSelectionChange(null));
 
-  // Add-text mode: click on blank area creates IText
+  // Pan tool drag state
+  let _panDrag = null;
   fabricCanvas.on('mouse:down', (e) => {
+    if (pdfEditorTool === 'pan') {
+      const stage = document.getElementById('edit-stage');
+      _panDrag = { startX: e.e.clientX, startY: e.e.clientY, scrollLeft: stage.scrollLeft, scrollTop: stage.scrollTop };
+      fabricCanvas.defaultCursor = 'grabbing';
+      e.e.preventDefault();
+      return;
+    }
     if (pdfEditorTool === 'add-text' && !e.target) {
       const pointer = fabricCanvas.getPointer(e.e);
       _addTextAtPoint(pointer.x, pointer.y);
@@ -2719,6 +2734,16 @@ function _setupFabricEvents() {
     if ((pdfEditorTool === 'highlight' || pdfEditorTool === 'whiteout' || pdfEditorTool === 'rect') && !e.target) {
       _startShapeDraw(e);
     }
+  });
+  fabricCanvas.on('mouse:move', (e) => {
+    if (pdfEditorTool === 'pan' && _panDrag) {
+      const stage = document.getElementById('edit-stage');
+      stage.scrollLeft = _panDrag.scrollLeft - (e.e.clientX - _panDrag.startX);
+      stage.scrollTop  = _panDrag.scrollTop  - (e.e.clientY - _panDrag.startY);
+    }
+  });
+  fabricCanvas.on('mouse:up', () => {
+    if (_panDrag) { _panDrag = null; fabricCanvas.defaultCursor = 'grab'; }
   });
 }
 
@@ -3122,6 +3147,7 @@ function _pdfEditorKeyHandler(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undoPdfEdit(); return; }
   if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redoPdfEdit(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') { const a = fabricCanvas?.getActiveObject(); if (a && !a.isEditing) { e.preventDefault(); deleteSelectedFabricObj(); } return; }
+  if (e.key === ' ') { e.preventDefault(); _setPdfEditorTool('pan'); return; }
   if (e.key === 'v' && !e.ctrlKey) { _setPdfEditorTool('select'); return; }
   if (e.key === 'e') { _setPdfEditorTool('edit-text'); return; }
   if (e.key === 't') { _setPdfEditorTool('add-text'); return; }
