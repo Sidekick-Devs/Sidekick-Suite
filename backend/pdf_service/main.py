@@ -357,23 +357,21 @@ def _apply_edit_actions(data: bytes, actions: list[dict[str, Any]]) -> bytes:
         if tool == "replace":
             # Whiteout original text region then draw new text
             original_rect = _original_rect_from_action(page, action, rect)
-            # Erase: 1pt sides, 2pt top/bottom covers descenders & diacritics without bleeding into adjacent blocks
-            page.add_redact_annot(_expand_rect(original_rect, -1, -2, 1, 2), fill=(1, 1, 1))
+            # Erase: 1pt sides, 2pt top for diacritics; bottom flush to avoid bleeding into block below
+            page.add_redact_annot(_expand_rect(original_rect, -1, -2, 1, 0), fill=(1, 1, 1))
             page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
             text = str(action.get("text", ""))
             font_name, font_file = _resolve_font_for_text(font_family, bold, italic, text)
-            font_size = float(action.get("size") or max(9, original_rect.height * 0.75))
-            # Keep vertical bounds of original rect; expand right only if new text is likely wider
-            text_rect = fitz.Rect(
-                original_rect.x0,
-                original_rect.y0,
-                max(original_rect.x1, original_rect.x1 + font_size * 2),
-                original_rect.y1,  # never expand bottom — avoids covering blocks below
-            )
-            page.insert_textbox(
-                text_rect, text,
+            font_size = max(6.0, float(action.get("size") or original_rect.height * 0.75))
+            # Use insert_text (point-based, no rect-fitting constraint) so text always renders.
+            # Detected text from frontend is always single-line (newlines replaced with spaces).
+            # Baseline ≈ y0 + 0.8*fontsize covers ascender for both Helvetica and NotoSans.
+            baseline_y = original_rect.y0 + font_size * 0.82
+            page.insert_text(
+                fitz.Point(original_rect.x0, baseline_y),
+                text,
                 fontsize=font_size, fontname=font_name, fontfile=font_file,
-                color=color, align=align,
+                color=color,
             )
 
         elif tool == "text":
