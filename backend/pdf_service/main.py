@@ -1,23 +1,31 @@
 import base64
+import hashlib
+import hmac
 import io
 import json
 import os
+import random
 import shutil
+import string
 import subprocess
 import tempfile
+import urllib.parse
+import urllib.request
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import fitz
 import google.auth
+import jwt
 import pytesseract
 from docx import Document
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from google.auth.transport.requests import Request as GoogleAuthRequest
+from google.cloud import firestore as gcf
 from google.cloud import storage as gcs
 from pdf2docx import Converter
 from PIL import Image
@@ -76,6 +84,101 @@ def _resolve_font_for_text(family: str | None, bold: bool, italic: bool, text: s
     return font_name, font_file
 TESSERACT_LANG = os.getenv("TESSERACT_LANG", "eng+vie")
 BUCKET_NAME = os.getenv("GCS_BUCKET", "sidekick-pdf-uploads")
+
+# ── Auth config ──────────────────────────────────────────
+ALLOWED_EMAIL_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "sidekick.vn")
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+JWT_EXPIRE_DAYS = 30
+
+GRAPH_TENANT_ID = os.getenv("GRAPH_TENANT_ID", "")
+GRAPH_CLIENT_ID = os.getenv("GRAPH_CLIENT_ID", "")
+GRAPH_CLIENT_SECRET = os.getenv("GRAPH_CLIENT_SECRET", "")
+MAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS", "noreply@sidekick.vn")
+
+OTP_EXPIRE_MINUTES = 10
+OTP_RESEND_COOLDOWN = 60
+OTP_MAX_ATTEMPTS = 5
+
+_firestore_client: gcf.Client | None = None
+
+
+def _get_db() -> gcf.Client:
+    global _firestore_client
+    if _firestore_client is None:
+        _firestore_client = gcf.Client(database=os.getenv("FIRESTORE_DB", "sidekick-suites"))
+    return _firestore_client
+
+
+def _generate_otp() -> str:
+    return "".join(random.choices(string.digits, k=6))
+
+
+def _hash_otp(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def _send_otp_email(to_email: str, code: str) -> None:
+    # Get access token via client credentials flow
+    token_data = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": GRAPH_CLIENT_ID,
+        "client_secret": GRAPH_CLIENT_SECRET,
+        "scope": "https://graph.microsoft.com/.default",
+    }).encode()
+    token_req = urllib.request.Request(
+        f"https://login.microsoftonline.com/{GRAPH_TENANT_ID}/oauth2/v2.0/token",
+        data=token_data, method="POST",
+    )
+    with urllib.request.urlopen(token_req, timeout=15) as resp:
+        access_token = json.loads(resp.read())["access_token"]
+
+    # Send via Graph API
+    body = (
+        f"Xin chào,\n\n"
+        f"Mã đăng nhập Sidekick Suites của bạn là:\n\n"
+        f"    {code}\n\n"
+        f"Mã có hiệu lực trong {OTP_EXPIRE_MINUTES} phút.\n"
+        f"Nếu bạn không yêu cầu mã này, hãy bỏ qua email này.\n\n"
+        f"— Sidekick Suites"
+    )
+    mail_payload = json.dumps({
+        "message": {
+            "subject": f"[Sidekick Suites] Mã đăng nhập: {code}",
+            "body": {"contentType": "Text", "content": body},
+            "toRecipients": [{"emailAddress": {"address": to_email}}],
+        }
+    }).encode()
+    mail_req = urllib.request.Request(
+        f"https://graph.microsoft.com/v1.0/users/{MAIL_FROM_ADDRESS}/sendMail",
+        data=mail_payload,
+        headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(mail_req, timeout=15) as resp:
+        if resp.status not in (200, 202):
+            raise Exception(f"Graph API returned {resp.status}")
+
+
+def _issue_token(email: str) -> str:
+    if not JWT_SECRET:
+        raise HTTPException(status_code=500, detail="JWT_SECRET not configured")
+    now = datetime.now(timezone.utc)
+    payload = {"sub": email, "iat": now, "exp": now + timedelta(days=JWT_EXPIRE_DAYS)}
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+
+def _verify_jwt(authorization: Annotated[str | None, Header()] = None) -> dict:
+    if not JWT_SECRET:
+        raise HTTPException(status_code=500, detail="JWT_SECRET not configured")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    token = authorization.removeprefix("Bearer ")
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Session expired, please login again")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 GS_QUALITY_MAP = {
     "screen": "/screen",
     "ebook": "/ebook",
@@ -437,18 +540,92 @@ def root() -> dict[str, Any]:
     return {"service": "Sidekick Suites PDF API", "ghostscript": _gs_available()}
 
 
+@app.post("/auth/send-code")
+async def send_code(email: str = Form(...)) -> dict:
+    email = email.strip().lower()
+    if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
+        raise HTTPException(status_code=403, detail=f"Chỉ chấp nhận email @{ALLOWED_EMAIL_DOMAIN}")
+    if not GRAPH_TENANT_ID or not GRAPH_CLIENT_ID or not GRAPH_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+
+    db = _get_db()
+    doc_ref = db.collection("otp_codes").document(email)
+    doc = doc_ref.get()
+    now = datetime.now(timezone.utc)
+
+    if doc.exists:
+        sent_at = doc.to_dict().get("sent_at")
+        if sent_at and (now - sent_at).total_seconds() < OTP_RESEND_COOLDOWN:
+            remaining = OTP_RESEND_COOLDOWN - int((now - sent_at).total_seconds())
+            raise HTTPException(status_code=429, detail=f"Vui lòng đợi {remaining}s trước khi gửi lại")
+
+    code = _generate_otp()
+    doc_ref.set({
+        "code_hash": _hash_otp(code),
+        "sent_at": now,
+        "expires_at": now + timedelta(minutes=OTP_EXPIRE_MINUTES),
+        "attempts": 0,
+    })
+
+    try:
+        _send_otp_email(email, code)
+    except Exception as exc:
+        doc_ref.delete()
+        raise HTTPException(status_code=500, detail=f"Không gửi được email: {type(exc).__name__}") from exc
+
+    return {"ok": True, "message": f"Mã đã gửi đến {email}"}
+
+
+@app.post("/auth/verify-code")
+async def verify_code(email: str = Form(...), code: str = Form(...)) -> dict:
+    email = email.strip().lower()
+    code = code.strip()
+
+    if not email.endswith(f"@{ALLOWED_EMAIL_DOMAIN}"):
+        raise HTTPException(status_code=403, detail="Email không hợp lệ")
+
+    db = _get_db()
+    doc_ref = db.collection("otp_codes").document(email)
+    doc = doc_ref.get()
+
+    if not doc.exists:
+        raise HTTPException(status_code=400, detail="Mã không hợp lệ hoặc đã hết hạn")
+
+    data = doc.to_dict()
+    now = datetime.now(timezone.utc)
+
+    expires_at = data.get("expires_at")
+    if not expires_at or expires_at < now:
+        doc_ref.delete()
+        raise HTTPException(status_code=400, detail="Mã đã hết hạn, vui lòng yêu cầu mã mới")
+
+    attempts = data.get("attempts", 0)
+    if attempts >= OTP_MAX_ATTEMPTS:
+        doc_ref.delete()
+        raise HTTPException(status_code=400, detail="Quá nhiều lần thử sai, vui lòng yêu cầu mã mới")
+
+    if not hmac.compare_digest(data.get("code_hash", ""), _hash_otp(code)):
+        doc_ref.update({"attempts": attempts + 1})
+        remaining = OTP_MAX_ATTEMPTS - attempts - 1
+        raise HTTPException(status_code=400, detail=f"Mã không đúng, còn {remaining} lần thử")
+
+    doc_ref.delete()
+    token = _issue_token(email)
+    return {"token": token, "email": email, "expires_in_days": JWT_EXPIRE_DAYS}
+
+
 @app.get("/upload-url")
-def get_upload_url(filename: str) -> dict[str, str]:
+def get_upload_url(filename: str, _user: dict = Depends(_verify_jwt)) -> dict[str, str]:
     return _create_upload_url(filename)
 
 
 @app.post("/upload-url")
-def post_upload_url(filename: str = Form(...)) -> dict[str, str]:
+def post_upload_url(filename: str = Form(...), _user: dict = Depends(_verify_jwt)) -> dict[str, str]:
     return _create_upload_url(filename)
 
 
 @app.post("/upload-pdf")
-async def upload_pdf(file: UploadFile = File(...)) -> dict[str, str]:
+async def upload_pdf(file: UploadFile = File(...), _user: dict = Depends(_verify_jwt)) -> dict[str, str]:
     filename = file.filename or "upload.pdf"
     if not filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
@@ -465,6 +642,7 @@ async def compress_from_gcs(
     object_name: str = Form(...),
     quality: str = Form("ebook"),
     grayscale: bool = Form(False),
+    _user: dict = Depends(_verify_jwt),
 ) -> FileResponse:
     if quality not in GS_QUALITY_MAP:
         raise HTTPException(status_code=400, detail=f"quality must be one of: {list(GS_QUALITY_MAP)}")
@@ -533,7 +711,11 @@ async def compress_from_gcs(
 
 
 @app.post("/pdf/analyze-text")
-async def analyze_text(file: UploadFile = File(...), pages: str | None = Form(None)) -> JSONResponse:
+async def analyze_text(
+    file: UploadFile = File(...),
+    pages: str | None = Form(None),
+    _user: dict = Depends(_verify_jwt),
+) -> JSONResponse:
     data = _read_pdf(file)
     pdf = fitz.open(stream=data, filetype="pdf")
     selected = _parse_pages(pages, pdf.page_count)
@@ -551,7 +733,11 @@ async def analyze_text(file: UploadFile = File(...), pages: str | None = Form(No
 
 
 @app.post("/pdf/edit-text")
-async def edit_text(file: UploadFile = File(...), actions: str = Form("[]")) -> StreamingResponse:
+async def edit_text(
+    file: UploadFile = File(...),
+    actions: str = Form("[]"),
+    _user: dict = Depends(_verify_jwt),
+) -> StreamingResponse:
     data = _read_pdf(file)
     try:
         parsed_actions = json.loads(actions.lstrip("\ufeff"))
@@ -574,6 +760,7 @@ async def convert_word(
     file: UploadFile = File(...),
     pages: str | None = Form(None),
     mode: str = Form("layout"),
+    _user: dict = Depends(_verify_jwt),
 ) -> StreamingResponse:
     data = _read_pdf(file)
     pdf = fitz.open(stream=data, filetype="pdf")

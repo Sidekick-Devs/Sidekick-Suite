@@ -92,6 +92,34 @@
     }
     .theme-btn:hover { background: var(--bg-secondary); }
 
+    /* AUTH OVERLAY */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg-tertiary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #auth-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    #auth-card .btn.primary {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+    }
+    #auth-card .btn.primary:hover { opacity: 0.9; }
+    #auth-card .btn.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .auth-logo {
+      font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 22px;
+      text-align: center; margin-bottom: 6px;
+    }
+    .auth-otp-input {
+      letter-spacing: 0.35em; font-size: 20px !important;
+      text-align: center; font-weight: 600;
+    }
+
     /* LAYOUT */
     .app {
       display: flex;
@@ -856,6 +884,7 @@
 <div class="topbar">
   <div class="topbar-logo" style="font-family:'Poppins',sans-serif; font-weight:800; font-size:15px; letter-spacing:-0.01em;"><span style="color:#0077fd;">SIDEKICK</span><span style="color:var(--text-primary);">Suites</span></div>
   <div class="topbar-spacer"></div>
+  <div id="auth-user-info" style="display:flex; align-items:center; gap:8px;"></div>
   <button class="theme-btn" onclick="toggleTheme()" title="Đổi theme">🌙</button>
 </div>
 
@@ -1783,6 +1812,43 @@
 
   </div><!-- /main -->
 </div><!-- /app -->
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay">
+  <div id="auth-card">
+    <div class="auth-logo"><span style="color:#0077fd;">SIDEKICK</span><span style="color:var(--text-primary);">Suites</span></div>
+    <div style="text-align:center; font-size:13px; color:var(--text-secondary); margin-bottom:24px;">Đăng nhập để sử dụng</div>
+
+    <div id="auth-step-email">
+      <div style="margin-bottom:12px;">
+        <label class="field-label">Email công ty</label>
+        <input type="email" id="auth-email-input" placeholder="your.name@sidekick.vn"
+               onkeydown="if(event.key==='Enter')authSendCode()">
+      </div>
+      <button class="btn primary" id="auth-send-btn" onclick="authSendCode()" style="width:100%;">Gửi mã xác nhận</button>
+      <div id="auth-email-error" class="alert alert-error" style="display:none; margin-top:10px;"></div>
+    </div>
+
+    <div id="auth-step-otp" style="display:none;">
+      <div style="font-size:13px; color:var(--text-secondary); margin-bottom:14px;">
+        Mã đã gửi đến <strong id="auth-email-display"></strong>. Có hiệu lực 10 phút.
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="field-label">Mã xác nhận (6 số)</label>
+        <input type="text" id="auth-otp-input" class="auth-otp-input" placeholder="000000"
+               maxlength="6" inputmode="numeric" pattern="[0-9]*"
+               onkeydown="if(event.key==='Enter')authVerifyCode()">
+      </div>
+      <button class="btn primary" id="auth-verify-btn" onclick="authVerifyCode()" style="width:100%; margin-bottom:8px;">Đăng nhập</button>
+      <button class="btn" onclick="authBack()" style="width:100%;">Đổi email</button>
+      <div id="auth-otp-error" class="alert alert-error" style="display:none; margin-top:10px;"></div>
+      <div style="margin-top:12px; text-align:center;">
+        <span id="auth-resend-timer" style="font-size:12px; color:var(--text-tertiary);">Gửi lại sau <span id="auth-resend-secs">60</span>s</span>
+        <a id="auth-resend-link" href="#" onclick="authResend();return false;" style="display:none; font-size:12px; color:var(--accent);">Gửi lại mã</a>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ────────────────────────────────────────────────────────
@@ -2970,7 +3036,7 @@ async function _detectTextBlocksBackend(pageNum) {
     const form = new FormData();
     form.append('file', pdfEditorFile, pdfEditorFile.name);
     form.append('pages', String(pageNum));
-    const res = await fetch(`${PDF_API_BASE}/pdf/analyze-text`, { method: 'POST', mode: 'cors', body: form });
+    const res = await authFetch(`${PDF_API_BASE}/pdf/analyze-text`, { method: 'POST', mode: 'cors', body: form });
     if (!res.ok) return null;
     const data = await res.json();
     return data?.pages?.[0]?.blocks || null;
@@ -3320,7 +3386,7 @@ async function exportEditedPdf() {
     const form = new FormData();
     form.append('file', pdfEditorFile, pdfEditorFile.name);
     form.append('actions', JSON.stringify(allActions));
-    const res = await fetch(`${PDF_API_BASE}/pdf/edit-text`, { method: 'POST', mode: 'cors', body: form });
+    const res = await authFetch(`${PDF_API_BASE}/pdf/edit-text`, { method: 'POST', mode: 'cors', body: form });
     if (!res.ok) {
       const detail = await res.text().catch(() => res.statusText);
       throw new Error(detail || res.statusText);
@@ -3415,7 +3481,7 @@ async function convertPdfToWord() {
     form.append('file', pdfToWordFile, pdfToWordFile.name);
     form.append('mode', mode);
     form.append('pages', document.getElementById('word-pages').value || '');
-    const res = await fetch(`${PDF_API_BASE}/pdf/convert-word`, { method: 'POST', mode: 'cors', body: form });
+    const res = await authFetch(`${PDF_API_BASE}/pdf/convert-word`, { method: 'POST', mode: 'cors', body: form });
     if (!res.ok) {
       const detail = await res.text().catch(() => res.statusText);
       throw new Error(detail || res.statusText);
@@ -4067,7 +4133,7 @@ async function compressPdfGs() {
   try {
     // Bước 1: Lấy GCS upload URL từ backend
     currentStep = steps[0]; secs = 0;
-    const urlRes = await fetch(`${base}/upload-url?filename=${encodeURIComponent(compFile.name)}`, {
+    const urlRes = await authFetch(`${base}/upload-url?filename=${encodeURIComponent(compFile.name)}`, {
       method: 'GET',
       mode: 'cors',
       signal: AbortSignal.timeout(20000),
@@ -4102,7 +4168,7 @@ async function compressPdfGs() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1500000); // 25 phút
 
-    const res = await fetch(`${base}/compress-gcs`, {
+    const res = await authFetch(`${base}/compress-gcs`, {
       method: 'POST', mode: 'cors', body: form, signal: controller.signal,
     });
     clearTimeout(timeoutId);
@@ -4319,6 +4385,195 @@ function clearUtm() {
 
 // Init history on load
 renderHistory();
+
+// ────────────────────────────────────────────────────────
+// AUTH
+// ────────────────────────────────────────────────────────
+const _AUTH_TOKEN_KEY = 'sidekick_token';
+const _AUTH_EMAIL_KEY = 'sidekick_email';
+let _resendInterval = null;
+
+function authGetToken() { return localStorage.getItem(_AUTH_TOKEN_KEY); }
+
+function authSetToken(token, email) {
+  localStorage.setItem(_AUTH_TOKEN_KEY, token);
+  localStorage.setItem(_AUTH_EMAIL_KEY, email);
+}
+
+function authClear() {
+  localStorage.removeItem(_AUTH_TOKEN_KEY);
+  localStorage.removeItem(_AUTH_EMAIL_KEY);
+}
+
+function authFetch(url, options = {}) {
+  const token = authGetToken();
+  const headers = { ...(options.headers || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return fetch(url, { ...options, headers }).then(res => {
+    if (res.status === 401) {
+      authClear();
+      authUpdateTopbar(null);
+      authShowOverlay();
+      return Promise.reject(new Error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại'));
+    }
+    return res;
+  });
+}
+
+function authShowOverlay() {
+  document.getElementById('auth-overlay').style.display = 'flex';
+  document.getElementById('auth-step-email').style.display = 'block';
+  document.getElementById('auth-step-otp').style.display = 'none';
+  document.getElementById('auth-email-input').value = '';
+  document.getElementById('auth-email-error').style.display = 'none';
+  setTimeout(() => document.getElementById('auth-email-input').focus(), 100);
+}
+
+function authHideOverlay() {
+  document.getElementById('auth-overlay').style.display = 'none';
+}
+
+async function authSendCode() {
+  const email = document.getElementById('auth-email-input').value.trim().toLowerCase();
+  const errEl = document.getElementById('auth-email-error');
+  const btn = document.getElementById('auth-send-btn');
+
+  errEl.style.display = 'none';
+  if (!email.endsWith('@sidekick.vn')) {
+    errEl.textContent = 'Chỉ chấp nhận email @sidekick.vn';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Đang gửi...';
+  try {
+    const form = new FormData();
+    form.append('email', email);
+    const res = await fetch(`${PDF_API_BASE}/auth/send-code`, { method: 'POST', body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errEl.textContent = data.detail || 'Không gửi được mã, vui lòng thử lại';
+      errEl.style.display = 'block';
+      return;
+    }
+    document.getElementById('auth-email-display').textContent = email;
+    document.getElementById('auth-step-email').style.display = 'none';
+    document.getElementById('auth-step-otp').style.display = 'block';
+    document.getElementById('auth-otp-input').value = '';
+    document.getElementById('auth-otp-error').style.display = 'none';
+    setTimeout(() => document.getElementById('auth-otp-input').focus(), 100);
+    _authStartResendTimer();
+  } catch {
+    errEl.textContent = 'Lỗi kết nối, vui lòng thử lại';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Gửi mã xác nhận';
+  }
+}
+
+async function authVerifyCode() {
+  const email = document.getElementById('auth-email-display').textContent;
+  const code = document.getElementById('auth-otp-input').value.trim();
+  const errEl = document.getElementById('auth-otp-error');
+  const btn = document.getElementById('auth-verify-btn');
+
+  errEl.style.display = 'none';
+  if (!/^\d{6}$/.test(code)) {
+    errEl.textContent = 'Mã gồm đúng 6 chữ số';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Đang xác nhận...';
+  try {
+    const form = new FormData();
+    form.append('email', email);
+    form.append('code', code);
+    const res = await fetch(`${PDF_API_BASE}/auth/verify-code`, { method: 'POST', body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errEl.textContent = data.detail || 'Mã không đúng, vui lòng thử lại';
+      errEl.style.display = 'block';
+      return;
+    }
+    authSetToken(data.token, data.email);
+    authHideOverlay();
+    authUpdateTopbar(data.email);
+  } catch {
+    errEl.textContent = 'Lỗi kết nối, vui lòng thử lại';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Đăng nhập';
+  }
+}
+
+function authBack() {
+  document.getElementById('auth-step-otp').style.display = 'none';
+  document.getElementById('auth-step-email').style.display = 'block';
+  document.getElementById('auth-email-error').style.display = 'none';
+  clearInterval(_resendInterval);
+}
+
+function _authStartResendTimer(secs = 60) {
+  document.getElementById('auth-resend-timer').style.display = 'inline';
+  document.getElementById('auth-resend-link').style.display = 'none';
+  document.getElementById('auth-resend-secs').textContent = secs;
+  clearInterval(_resendInterval);
+  _resendInterval = setInterval(() => {
+    secs--;
+    document.getElementById('auth-resend-secs').textContent = secs;
+    if (secs <= 0) {
+      clearInterval(_resendInterval);
+      document.getElementById('auth-resend-timer').style.display = 'none';
+      document.getElementById('auth-resend-link').style.display = 'inline';
+    }
+  }, 1000);
+}
+
+async function authResend() {
+  document.getElementById('auth-step-otp').style.display = 'none';
+  document.getElementById('auth-step-email').style.display = 'block';
+  document.getElementById('auth-email-input').value = document.getElementById('auth-email-display').textContent;
+  await authSendCode();
+}
+
+function authLogout() {
+  authClear();
+  authUpdateTopbar(null);
+  authShowOverlay();
+}
+
+function authUpdateTopbar(email) {
+  const el = document.getElementById('auth-user-info');
+  if (!el) return;
+  if (email) {
+    el.innerHTML = `<span style="font-size:12px;color:var(--text-secondary);">${email}</span><button class="theme-btn" onclick="authLogout()" title="Đăng xuất" style="width:auto;padding:0 10px;font-size:11px;">Đăng xuất</button>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+// Kiểm tra token khi load trang
+(function() {
+  const token = authGetToken();
+  const email = localStorage.getItem(_AUTH_EMAIL_KEY);
+  if (token && email) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      if (payload.exp * 1000 > Date.now()) {
+        authHideOverlay();
+        authUpdateTopbar(email);
+        return;
+      }
+    } catch { /* invalid token shape */ }
+  }
+  authClear();
+  authShowOverlay();
+})();
 </script>
 </body>
 </html>
