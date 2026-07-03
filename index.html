@@ -4,12 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sidekick Suites</title>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@8..144,400..800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
   <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
+    @font-face {
+      font-family: 'Google Sans';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('https://fonts.gstatic.com/s/googlesans/v69/4Ua_rENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RFD48TE63OOYKtrwEIJllpyw.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Google Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url('https://fonts.gstatic.com/s/googlesans/v69/4Ua_rENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RFD48TE63OOYKtrw2IJllpyw.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Google Sans';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url('https://fonts.gstatic.com/s/googlesans/v69/4Ua_rENHsxJlGDuGo1OIlJfC6l_24rlCK1Yo_Iqcsih3SAyH6cAwhX9RFD48TE63OOYKtrzjJ5llpyw.ttf') format('truetype');
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -31,7 +52,7 @@
       --info-text: #1d4ed8;
       --radius: 8px;
       --radius-lg: 12px;
-      --font-ui: 'Google Sans Flex', 'Google Sans', 'Google Sans Text', 'Product Sans', Arial, sans-serif;
+      --font-ui: 'Google Sans', 'Google Sans Text', 'Product Sans', Arial, sans-serif;
     }
 
     [data-theme="dark"] {
@@ -113,7 +134,7 @@
     #auth-card .btn.primary:hover { opacity: 0.9; }
     #auth-card .btn.primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .auth-logo {
-      font-family: var(--font-ui); font-weight: 800; font-size: 22px;
+      font-family: var(--font-ui); font-weight: 700; font-size: 22px;
       text-align: center; margin-bottom: 6px;
     }
     .auth-otp-input {
@@ -883,7 +904,7 @@
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div class="topbar-logo" style="font-family:var(--font-ui); font-weight:800; font-size:15px; letter-spacing:-0.01em;"><span style="color:#0077fd;">SIDEKICK</span><span style="color:var(--text-primary);">Suites</span></div>
+  <div class="topbar-logo" style="font-family:var(--font-ui); font-weight:700; font-size:15px; letter-spacing:-0.01em;"><span style="color:#0077fd;">SIDEKICK</span><span style="color:var(--text-primary);">Suites</span></div>
   <div class="topbar-spacer"></div>
   <div id="auth-user-info" style="display:flex; align-items:center; gap:8px;"></div>
   <button class="theme-btn" onclick="toggleTheme()" title="Đổi theme">🌙</button>
@@ -2438,7 +2459,7 @@ function dataUrlToUint8Array(dataUrl) {
 }
 function getUiFontFamily() {
   const value = getComputedStyle(document.documentElement).getPropertyValue('--font-ui').trim();
-  return value || "'Google Sans Flex', 'Google Sans', 'Google Sans Text', 'Product Sans', Arial, sans-serif";
+  return value || "'Google Sans', 'Google Sans Text', 'Product Sans', Arial, sans-serif";
 }
 function makePdfTextImage(text, size, color, maxWidth) {
   const scale = 3;
