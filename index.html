@@ -5161,7 +5161,7 @@ function renderCommandPalette() {
     return;
   }
   list.innerHTML = commandPaletteItems.map((item, index) => `
-    <button class="cmdk-item ${index === commandPaletteActiveIndex ? 'active' : ''}" onclick="runCommandPaletteItem(${index})" onmouseenter="commandPaletteActiveIndex=${index};renderCommandPalette()">
+    <button class="cmdk-item ${index === commandPaletteActiveIndex ? 'active' : ''}" data-cmdk-index="${index}" onmousedown="event.preventDefault();runCommandPaletteItem(${index})" onmouseenter="setCommandPaletteActive(${index})">
       <span class="cmdk-icon">${htmlEscape(item.icon)}</span>
       <span>
         <span class="cmdk-title">${htmlEscape(item.title)}</span>
@@ -5171,6 +5171,13 @@ function renderCommandPalette() {
     </button>
   `).join('');
   list.querySelector('.cmdk-item.active')?.scrollIntoView({ block: 'nearest' });
+}
+
+function setCommandPaletteActive(index) {
+  commandPaletteActiveIndex = index;
+  document.querySelectorAll('.cmdk-item').forEach((item, itemIndex) => {
+    item.classList.toggle('active', itemIndex === index);
+  });
 }
 
 function handleCommandPaletteKey(event) {
@@ -5205,13 +5212,14 @@ function runCommandPaletteItem(index) {
   if (item.recipeId) {
     const recipe = recipes.find(r => r.id === item.recipeId);
     if (!recipe) return;
-    navigator.clipboard.writeText(recipe.content).then(() => {
-      recipe.usedAt = Date.now();
-      saveRecipesToStorage();
-      switchTab('recipes');
-      closeCommandPalette();
-      renderRecipes();
-    });
+    recipe.usedAt = Date.now();
+    saveRecipesToStorage();
+    switchTab('recipes');
+    const search = document.getElementById('recipe-search');
+    if (search) search.value = recipe.title;
+    closeCommandPalette();
+    renderRecipes();
+    navigator.clipboard?.writeText(recipe.content).catch(() => {});
   }
 }
 
