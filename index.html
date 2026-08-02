@@ -324,6 +324,183 @@
     .tag:hover { border-color: var(--border-hover); color: var(--text-primary); }
     .tag.active { background: var(--text-primary); color: var(--bg-primary); border-color: transparent; }
 
+    /* COMMAND PALETTE */
+    .cmdk-topbar-btn {
+      height: 32px;
+      min-width: 138px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .cmdk-topbar-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+    .cmdk-kbd {
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 10px;
+      color: var(--text-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 5px;
+      background: var(--bg-primary);
+    }
+    .cmdk-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 9vh 16px 16px;
+      background: rgba(0,0,0,0.32);
+    }
+    .cmdk-overlay.active { display: flex; }
+    .cmdk-panel {
+      width: min(680px, 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-primary);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.22);
+      overflow: hidden;
+    }
+    .cmdk-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cmdk-input-wrap input {
+      border: none;
+      background: transparent;
+      padding: 6px 0;
+      font-size: 15px;
+    }
+    .cmdk-input-wrap input:focus { border-color: transparent; }
+    .cmdk-list {
+      max-height: min(58vh, 480px);
+      overflow: auto;
+      padding: 8px;
+    }
+    .cmdk-item {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--text-primary);
+      text-align: left;
+      cursor: pointer;
+    }
+    .cmdk-item:hover, .cmdk-item.active { background: var(--bg-secondary); border-color: var(--border); }
+    .cmdk-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      background: var(--accent-light);
+      color: var(--accent-text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .cmdk-title { font-size: 13px; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
+    .cmdk-subtitle { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; overflow-wrap: anywhere; }
+    .cmdk-kind { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+    .cmdk-empty { padding: 24px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
+    .cmdk-footer {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 9px 12px;
+      border-top: 1px solid var(--border);
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
+    /* QUICK RECIPES */
+    .recipe-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 160px;
+      gap: 10px;
+      align-items: end;
+    }
+    .recipe-form {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      background: var(--bg-secondary);
+      flex-direction: column;
+      gap: 12px;
+    }
+    .recipe-form.active { display: flex; }
+    .recipe-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+    .recipe-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+    .recipe-card.favorite { border-color: rgba(29,158,117,0.5); box-shadow: 0 0 0 2px rgba(29,158,117,0.08); }
+    .recipe-head { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; }
+    .recipe-title { font-size: 13px; font-weight: 650; color: var(--text-primary); line-height: 1.35; overflow-wrap: anywhere; }
+    .recipe-meta { display: flex; gap: 5px; flex-wrap: wrap; }
+    .recipe-chip {
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .recipe-code {
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      padding: 10px;
+      max-height: 150px;
+      overflow: auto;
+    }
+    .recipe-note { font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+    .recipe-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+    .recipe-empty {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      color: var(--text-tertiary);
+      text-align: center;
+      font-size: 13px;
+      grid-column: 1 / -1;
+    }
+
     /* PDF */
     .drop-zone {
       border: 2px dashed var(--border);
@@ -894,6 +1071,10 @@
       .sidebar { width: 48px; }
       .nav-item span:not(.nav-icon) { display: none; }
       .grid-2, .grid-3, .grid-4, .check-grid, .stat-grid { grid-template-columns: 1fr 1fr; }
+      .cmdk-topbar-btn { min-width: 36px; width: 36px; justify-content: center; padding: 0; }
+      .cmdk-topbar-btn span:first-child { display: none; }
+      .cmdk-kbd { display: none; }
+      .recipe-toolbar { grid-template-columns: 1fr; }
       .pdf-editor-layout, .reorder-preview-panel { grid-template-columns: 1fr; }
       .pdf-edit-shell { grid-template-columns: 1fr; }
       .pdf-left-col { display: none; }
@@ -906,8 +1087,28 @@
 <div class="topbar">
   <div class="topbar-logo" style="font-family:var(--font-ui); font-weight:700; font-size:15px; letter-spacing:-0.01em;"><span style="color:#0077fd;">SIDEKICK</span><span style="color:var(--text-primary);">Suites</span></div>
   <div class="topbar-spacer"></div>
+  <button class="cmdk-topbar-btn" onclick="openCommandPalette()" title="Search tools and recipes (Ctrl+K)">
+    <span>Search</span><span class="cmdk-kbd">Ctrl K</span>
+  </button>
   <div id="auth-user-info" style="display:flex; align-items:center; gap:8px;"></div>
   <button class="theme-btn" onclick="toggleTheme()" title="Đổi theme">🌙</button>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="cmdk-overlay" id="cmdk-overlay" onclick="if(event.target===this)closeCommandPalette()">
+  <div class="cmdk-panel" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="cmdk-input-wrap">
+      <span style="color:var(--text-tertiary);font-size:16px;">⌕</span>
+      <input type="text" id="cmdk-input" placeholder="Search tools, recipes, snippets..." autocomplete="off"
+             oninput="renderCommandPalette()" onkeydown="handleCommandPaletteKey(event)">
+    </div>
+    <div class="cmdk-list" id="cmdk-list"></div>
+    <div class="cmdk-footer">
+      <span><span class="cmdk-kbd">Enter</span> Open/copy</span>
+      <span><span class="cmdk-kbd">↑ ↓</span> Navigate</span>
+      <span><span class="cmdk-kbd">Esc</span> Close</span>
+    </div>
+  </div>
 </div>
 
 <!-- APP -->
@@ -935,6 +1136,11 @@
     </div>
     <div class="nav-item" onclick="switchTab('base64',this)">
       <span class="nav-icon">⌗</span><span>Base64</span>
+    </div>
+
+    <div class="sidebar-section">Knowledge</div>
+    <div class="nav-item" onclick="switchTab('recipes',this)">
+      <span class="nav-icon">⋆</span><span>Quick Recipes</span>
     </div>
 
     <div class="sidebar-section">Thiết kế</div>
@@ -1227,6 +1433,112 @@
       </div>
     </div>
 
+    <!-- ===== QUICK RECIPES ===== -->
+    <div class="tool-pane" id="tab-recipes">
+      <div class="tool-header">
+        <div class="tool-title">Quick Recipes</div>
+        <div class="tool-desc">Lưu công thức, format, regex, prompt và các mẩu hay quên để search và copy nhanh</div>
+      </div>
+
+      <div class="recipe-toolbar">
+        <div>
+          <label class="field-label">Tìm recipe</label>
+          <input type="text" id="recipe-search" placeholder="excel triệu, regex email, css clamp, utm..." oninput="renderRecipes()">
+        </div>
+        <div>
+          <label class="field-label">Category</label>
+          <select id="recipe-category-filter" onchange="renderRecipes()">
+            <option value="">Tất cả</option>
+            <option value="Excel">Excel / Sheets</option>
+            <option value="Regex">Regex</option>
+            <option value="CSS">CSS</option>
+            <option value="Prompt">Prompt</option>
+            <option value="UTM">UTM / Tracking</option>
+            <option value="Writing">Writing</option>
+            <option value="Command">Command</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="tag-row" id="recipe-quick-tags">
+        <span class="tag active" onclick="setRecipeQuickFilter('',this)">All</span>
+        <span class="tag" onclick="setRecipeQuickFilter('favorite',this)">Favorites</span>
+        <span class="tag" onclick="setRecipeQuickFilter('recent',this)">Recently used</span>
+        <span class="tag" onclick="setRecipeQuickFilter('excel',this)">Excel</span>
+        <span class="tag" onclick="setRecipeQuickFilter('regex',this)">Regex</span>
+        <span class="tag" onclick="setRecipeQuickFilter('prompt',this)">Prompt</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="showRecipeForm()">+ Add recipe</button>
+        <button class="btn" onclick="exportRecipes()">Export JSON</button>
+        <button class="btn" onclick="document.getElementById('recipe-import-file').click()">Import JSON</button>
+        <button class="btn danger" onclick="resetStarterRecipes()">Reset starter</button>
+        <input type="file" id="recipe-import-file" accept=".json,application/json" style="display:none" onchange="importRecipes(this)">
+      </div>
+
+      <div class="recipe-form" id="recipe-form">
+        <div class="grid-2">
+          <div>
+            <label class="field-label">Tên recipe</label>
+            <input type="text" id="recipe-title" placeholder="Excel: rút gọn số theo triệu">
+          </div>
+          <div>
+            <label class="field-label">Category</label>
+            <select id="recipe-category">
+              <option value="Excel">Excel / Sheets</option>
+              <option value="Regex">Regex</option>
+              <option value="CSS">CSS</option>
+              <option value="Prompt">Prompt</option>
+              <option value="UTM">UTM / Tracking</option>
+              <option value="Writing">Writing</option>
+              <option value="Command">Command</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Nội dung để copy</label>
+          <textarea id="recipe-content" placeholder="#,##0,," style="min-height:90px;"></textarea>
+        </div>
+        <div>
+          <label class="field-label">Ghi chú / ví dụ</label>
+          <textarea id="recipe-note" placeholder="1,000,000 -> 1; 12,500,000 -> 13" style="min-height:70px; font-family:inherit;"></textarea>
+        </div>
+        <div class="grid-2">
+          <div>
+            <label class="field-label">Tags</label>
+            <input type="text" id="recipe-tags" placeholder="excel, reporting, format">
+          </div>
+          <div>
+            <label class="field-label">Type</label>
+            <select id="recipe-type">
+              <option value="Formula">Formula</option>
+              <option value="Custom format">Custom format</option>
+              <option value="Regex">Regex</option>
+              <option value="Snippet">Snippet</option>
+              <option value="Prompt">Prompt</option>
+              <option value="Checklist">Checklist</option>
+              <option value="Command">Command</option>
+              <option value="Note">Note</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn success" onclick="saveRecipe()" id="recipe-save-btn">Save recipe</button>
+          <button class="btn" onclick="hideRecipeForm()">Cancel</button>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <div style="font-size:12px; color:var(--text-secondary);" id="recipe-count">0 recipes</div>
+        <div style="font-size:12px; color:var(--text-tertiary);">Stored locally in this browser</div>
+      </div>
+
+      <div class="recipe-list" id="recipe-list"></div>
+    </div>
+
     <!-- ===== COLOR ===== -->
     <div class="tool-pane" id="tab-color">
       <div class="tool-header">
@@ -1277,6 +1589,10 @@
       <div class="tool-header">
         <div class="tool-title">PDF Tools</div>
         <div class="tool-desc">Ghép, tách, xóa trang, xoay, resize, xuất PPTX — xử lý nhanh ngay trong trình duyệt</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button class="btn" onclick="checkPdfBackendHealth()" id="pdf-health-btn" style="font-size:11px;padding:4px 10px;">Check backend</button>
+          <span id="pdf-health-status" style="font-size:12px;color:var(--text-tertiary);"></span>
+        </div>
       </div>
       <div class="tag-row">
         <span class="tag active" onclick="switchPdf('merge',this)">Ghép PDF</span>
@@ -1893,8 +2209,11 @@ function toggleTheme() {
 function switchTab(name, el) {
   document.querySelectorAll('.tool-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  el.classList.add('active');
+  const pane = document.getElementById('tab-' + name);
+  const nav = el || Array.from(document.querySelectorAll('.nav-item')).find(item =>
+    (item.getAttribute('onclick') || '').includes(`switchTab('${name}'`));
+  if (pane) pane.classList.add('active');
+  if (nav) nav.classList.add('active');
 }
 function fileMatchesAccept(file, accept) {
   if (!accept) return true;
@@ -2149,7 +2468,7 @@ function copyText(id) {
   const el = document.getElementById(id);
   const val = el.value || el.textContent;
   navigator.clipboard.writeText(val).then(() => {
-    const btn = event && event.target;
+    const btn = document.activeElement?.tagName === 'BUTTON' ? document.activeElement : null;
     if (btn) { const orig = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = orig, 1500); }
   }).catch(() => {});
 }
@@ -2202,7 +2521,7 @@ function countWords() {
   const freq = {};
   s.toLowerCase().replace(/[^\wàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ\s]/g,'').split(/\s+/).forEach(w => { if (w.length > 2) freq[w] = (freq[w]||0)+1; });
   const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12);
-  document.getElementById('wc-freq').innerHTML = top.map(([w,n]) => `<span class="freq-badge">${w} <strong>${n}</strong></span>`).join('');
+  document.getElementById('wc-freq').innerHTML = top.map(([w,n]) => `<span class="freq-badge">${htmlEscape(w)} <strong>${n}</strong></span>`).join('');
 }
 
 // ────────────────────────────────────────────────────────
@@ -2244,12 +2563,18 @@ function runRegex() {
   try {
     const rx = new RegExp(pat, flags.includes('g') ? flags : flags + 'g');
     const matches = [...text.matchAll(rx)];
+    const displayMatches = matches.map(match => {
+      const safe = Array.from(match, part => htmlEscape(part ?? ''));
+      safe.index = match.index;
+      safe.rawLength = match[0]?.length || 0;
+      return safe;
+    });
     statusEl.innerHTML = `<span style="color:var(--accent)">✓ ${matches.length} match${matches.length!==1?'es':''}</span>`;
     const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
     const rx2 = new RegExp(pat, flags.includes('g') ? flags : flags + 'g');
     resultEl.innerHTML = escaped.replace(rx2, m => `<mark class="rx-match">${m.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</mark>`);
-    matchesEl.innerHTML = matches.slice(0,20).map((m,i) =>
-      `<div><span style="color:var(--text-tertiary)">[${i+1}] ký tự ${m.index}–${m.index+m[0].length}:</span> <code style="background:var(--bg-secondary);padding:1px 5px;border-radius:3px;">${m[0].replace(/</g,'&lt;')}</code>${m.length>1?' <span style="color:var(--text-tertiary)">groups: '+m.slice(1).join(', ')+'</span>':''}</div>`
+    matchesEl.innerHTML = displayMatches.slice(0,20).map((m,i) =>
+      `<div><span style="color:var(--text-tertiary)">[${i+1}] ký tự ${m.index}–${m.index+m.rawLength}:</span> <code style="background:var(--bg-secondary);padding:1px 5px;border-radius:3px;">${m[0].replace(/</g,'&lt;')}</code>${m.length>1?' <span style="color:var(--text-tertiary)">groups: '+m.slice(1).join(', ')+'</span>':''}</div>`
     ).join('');
   } catch(e) {
     statusEl.innerHTML = `<span style="color:var(--danger)">✗ ${e.message}</span>`;
@@ -2405,7 +2730,7 @@ const pdfEditorPageStates = new Map();
 const pdfUndoStack = [];
 const pdfRedoStack = [];
 const PDF_UNDO_LIMIT = 30;
-const PDF_API_BASE = localStorage.getItem('sidekickPdfApiBase') || 'https://sidekick-backend-nnrbx53cwq-as.a.run.app';
+const PDF_API_BASE = localStorage.getItem('sidekickPdfApiBase') || 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
 let reorderPageOrder = [];
 let reorderDragIndex = null;
 let reorderThumbObserver = null;
@@ -2435,7 +2760,12 @@ function addMergeFiles(input) {
   Array.from(input.files).forEach(f => {
     mergeFiles.push(f);
     const item=document.createElement('div'); item.className='file-item';
-    item.innerHTML=`<span class="file-item-icon">📄</span><span class="file-item-name">${f.name}</span><span class="file-item-size">${(f.size/1024).toFixed(0)} KB</span><button class="file-item-remove" onclick="removeMergeFile(this,'${f.name}')">×</button>`;
+    const icon=document.createElement('span'); icon.className='file-item-icon'; icon.textContent='PDF';
+    const name=document.createElement('span'); name.className='file-item-name'; name.textContent=f.name;
+    const size=document.createElement('span'); size.className='file-item-size'; size.textContent=`${(f.size/1024).toFixed(0)} KB`;
+    const remove=document.createElement('button'); remove.className='file-item-remove'; remove.textContent='×';
+    remove.addEventListener('click', () => removeMergeFile(remove, f.name));
+    item.append(icon, name, size, remove);
     document.getElementById('merge-list').appendChild(item);
   });
   input.value='';
@@ -4111,7 +4441,7 @@ async function convertPdfToPptx() {
 // PDF COMPRESS
 // ────────────────────────────────────────────────────────
 let compFile = null;
-const GS_API_BASE = 'https://sidekick-backend-214921149002.asia-southeast1.run.app';
+const GS_API_BASE = PDF_API_BASE;
 
 function loadCompFile(input) {
   const f = input.files[0]; if (!f) return;
@@ -4355,12 +4685,12 @@ function renderHistory() {
     const shortUrl = e.url.length > 80 ? e.url.slice(0, 80) + '...' : e.url;
     return `<div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; display:flex; flex-direction:column; gap:4px;">
       <div style="display:flex; align-items:center; gap:8px; justify-content:space-between; flex-wrap:wrap;">
-        <span style="font-size:12px; font-weight:600; color:var(--text-primary);">${e.label}</span>
+        <span style="font-size:12px; font-weight:600; color:var(--text-primary);">${htmlEscape(e.label)}</span>
         <span style="font-size:11px; color:var(--text-tertiary);">${dateStr}</span>
       </div>
-      <div style="font-size:11px; color:var(--text-secondary); font-family:monospace; word-break:break-all;">${shortUrl}</div>
+      <div style="font-size:11px; color:var(--text-secondary); font-family:monospace; word-break:break-all;">${htmlEscape(shortUrl)}</div>
       <div style="display:flex; gap:6px; margin-top:2px;">
-        <button class="btn" onclick="copyHistoryItem(${i})" style="font-size:11px; padding:3px 10px;">Copy</button>
+        <button class="btn" onclick="copyHistoryItem(${i}, this)" style="font-size:11px; padding:3px 10px;">Copy</button>
         <button class="btn" onclick="loadHistoryItem(${i})" style="font-size:11px; padding:3px 10px;">Load</button>
         <button class="btn danger" onclick="deleteHistoryItem(${i})" style="font-size:11px; padding:3px 10px;">Xóa</button>
       </div>
@@ -4368,10 +4698,11 @@ function renderHistory() {
   }).join('');
 }
 
-function copyHistoryItem(i) {
+function copyHistoryItem(i, btn) {
   navigator.clipboard.writeText(utmHistory[i].url).then(() => {
-    event.target.textContent = 'Copied!';
-    setTimeout(() => event.target.textContent = 'Copy', 1500);
+    if (!btn) return;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
   });
 }
 
@@ -4411,6 +4742,514 @@ function clearUtm() {
 
 // Init history on load
 renderHistory();
+
+// ────────────────────────────────────────────────────────
+// QUICK RECIPES
+// ────────────────────────────────────────────────────────
+const RECIPE_STORAGE_KEY = 'sidekick-quick-recipes';
+let recipeQuickFilter = '';
+let editingRecipeId = null;
+
+const starterRecipes = [
+  {
+    title: 'Excel: rút gọn số theo triệu',
+    category: 'Excel',
+    type: 'Custom format',
+    content: '#,##0,,',
+    note: '1,000,000 -> 1; 12,500,000 -> 13. Hai dấu phẩy cuối chia hiển thị cho 1,000,000.',
+    tags: ['excel', 'format', 'million', 'triệu', 'reporting'],
+    favorite: true
+  },
+  {
+    title: 'Excel: rút gọn số theo triệu và hiện M',
+    category: 'Excel',
+    type: 'Custom format',
+    content: '#,##0,,"M"',
+    note: '1,000,000 -> 1M. Dùng trong chart/table khi cần gọn nhãn số.',
+    tags: ['excel', 'format', 'million', 'chart'],
+    favorite: true
+  },
+  {
+    title: 'Excel: rút gọn số theo tỷ và hiện B',
+    category: 'Excel',
+    type: 'Custom format',
+    content: '#,##0,,,"B"',
+    note: '1,000,000,000 -> 1B. Có thể đổi "B" thành "bn" hoặc "tỷ".',
+    tags: ['excel', 'format', 'billion', 'tỷ'],
+    favorite: false
+  },
+  {
+    title: 'Excel: phần trăm có dấu + / -',
+    category: 'Excel',
+    type: 'Custom format',
+    content: '+0%;-0%;0%',
+    note: 'Dùng cho growth/change: 12% -> +12%, -5% -> -5%, 0 -> 0%.',
+    tags: ['excel', 'percentage', 'growth'],
+    favorite: false
+  },
+  {
+    title: 'Regex: email cơ bản',
+    category: 'Regex',
+    type: 'Regex',
+    content: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}',
+    note: 'Regex thực dụng để tìm email trong text, không phải validator tuyệt đối.',
+    tags: ['regex', 'email'],
+    favorite: false
+  },
+  {
+    title: 'Regex: xóa khoảng trắng thừa',
+    category: 'Regex',
+    type: 'Regex',
+    content: '\\s+',
+    note: 'Find: \\s+ ; Replace: một dấu space. Hữu ích khi clean text copy từ PDF/web.',
+    tags: ['regex', 'clean', 'space'],
+    favorite: true
+  },
+  {
+    title: 'CSS: clamp text 2 dòng',
+    category: 'CSS',
+    type: 'Snippet',
+    content: 'display: -webkit-box;\\n-webkit-line-clamp: 2;\\n-webkit-box-orient: vertical;\\noverflow: hidden;',
+    note: 'Dùng cho card title/description cần giới hạn số dòng.',
+    tags: ['css', 'layout', 'text'],
+    favorite: false
+  },
+  {
+    title: 'Prompt: rewrite gọn và rõ hơn',
+    category: 'Prompt',
+    type: 'Prompt',
+    content: 'Viết lại đoạn dưới đây cho gọn, rõ, tự nhiên hơn. Giữ nguyên ý chính, bỏ câu thừa, dùng tiếng Việt chuyên nghiệp nhưng không quá cứng:\\n\\n[PASTE TEXT]',
+    note: 'Prompt nhanh cho email, proposal, caption hoặc note nội bộ.',
+    tags: ['prompt', 'writing', 'vietnamese'],
+    favorite: false
+  },
+  {
+    title: 'UTM: naming convention campaign',
+    category: 'UTM',
+    type: 'Checklist',
+    content: 'brand_objective_market_yyyymm\\nvd: sidekick_leadgen_vn_202607',
+    note: 'Giữ lowercase, dùng hyphen/underscore nhất quán theo platform.',
+    tags: ['utm', 'tracking', 'campaign'],
+    favorite: false
+  },
+  {
+    title: 'Writing: headline kiểm tra nhanh',
+    category: 'Writing',
+    type: 'Checklist',
+    content: '1. Ai là người đọc?\\n2. Benefit chính là gì?\\n3. Có số liệu hoặc outcome cụ thể không?\\n4. Có bỏ được từ nào không?',
+    note: 'Checklist mini trước khi gửi headline/tagline cho review.',
+    tags: ['writing', 'headline', 'checklist'],
+    favorite: false
+  }
+];
+
+function normalizeRecipe(recipe) {
+  const now = Date.now();
+  const tags = Array.isArray(recipe.tags)
+    ? recipe.tags
+    : String(recipe.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+  const safeId = /^[A-Za-z0-9_-]+$/.test(recipe.id || '') ? recipe.id : '';
+  return {
+    id: safeId || `r_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    title: recipe.title || 'Untitled recipe',
+    category: recipe.category || 'Other',
+    type: recipe.type || 'Note',
+    content: recipe.content || '',
+    note: recipe.note || '',
+    tags,
+    favorite: !!recipe.favorite,
+    createdAt: recipe.createdAt || now,
+    updatedAt: recipe.updatedAt || now,
+    usedAt: recipe.usedAt || 0
+  };
+}
+
+function loadRecipes() {
+  try {
+    const raw = localStorage.getItem(RECIPE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map(normalizeRecipe);
+    }
+  } catch (error) {}
+  const seeded = starterRecipes.map(normalizeRecipe);
+  localStorage.setItem(RECIPE_STORAGE_KEY, JSON.stringify(seeded));
+  return seeded;
+}
+
+let recipes = loadRecipes();
+
+function saveRecipesToStorage() {
+  localStorage.setItem(RECIPE_STORAGE_KEY, JSON.stringify(recipes));
+}
+
+function htmlEscape(value) {
+  return String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function getRecipeSearchText(recipe) {
+  return [recipe.title, recipe.category, recipe.type, recipe.content, recipe.note, ...(recipe.tags || [])].join(' ').toLowerCase();
+}
+
+function setRecipeQuickFilter(filter, el) {
+  recipeQuickFilter = filter;
+  document.querySelectorAll('#recipe-quick-tags .tag').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderRecipes();
+}
+
+function getVisibleRecipes() {
+  const query = (document.getElementById('recipe-search')?.value || '').trim().toLowerCase();
+  const category = document.getElementById('recipe-category-filter')?.value || '';
+  let rows = recipes.slice();
+  if (category) rows = rows.filter(r => r.category === category);
+  if (query) rows = rows.filter(r => getRecipeSearchText(r).includes(query));
+  if (recipeQuickFilter === 'favorite') rows = rows.filter(r => r.favorite);
+  else if (recipeQuickFilter === 'recent') rows = rows.filter(r => r.usedAt);
+  else if (recipeQuickFilter) rows = rows.filter(r => getRecipeSearchText(r).includes(recipeQuickFilter));
+  return rows.sort((a, b) => {
+    if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+    return (b.usedAt || b.updatedAt || 0) - (a.usedAt || a.updatedAt || 0);
+  });
+}
+
+function renderRecipes() {
+  const list = document.getElementById('recipe-list');
+  const count = document.getElementById('recipe-count');
+  if (!list || !count) return;
+  const rows = getVisibleRecipes();
+  count.textContent = `${rows.length} recipe${rows.length === 1 ? '' : 's'}`;
+  if (!rows.length) {
+    list.innerHTML = '<div class="recipe-empty">Không tìm thấy recipe phù hợp. Thử keyword khác hoặc thêm recipe mới.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(recipe => {
+    const tags = (recipe.tags || []).slice(0, 4).map(tag => `<span class="recipe-chip">#${htmlEscape(tag)}</span>`).join('');
+    const note = recipe.note ? `<div class="recipe-note">${htmlEscape(recipe.note)}</div>` : '';
+    return `<div class="recipe-card ${recipe.favorite ? 'favorite' : ''}">
+      <div class="recipe-head">
+        <div>
+          <div class="recipe-title">${htmlEscape(recipe.title)}</div>
+          <div class="recipe-meta" style="margin-top:6px;">
+            <span class="recipe-chip">${htmlEscape(recipe.category)}</span>
+            <span class="recipe-chip">${htmlEscape(recipe.type)}</span>
+            ${tags}
+          </div>
+        </div>
+        <button class="btn" onclick="toggleRecipeFavorite('${recipe.id}')" title="Favorite" style="padding:4px 8px;">${recipe.favorite ? '★' : '☆'}</button>
+      </div>
+      <pre class="recipe-code">${htmlEscape(recipe.content)}</pre>
+      ${note}
+      <div class="recipe-actions">
+        <button class="btn success" onclick="copyRecipe('${recipe.id}', this)">Copy</button>
+        <button class="btn" onclick="editRecipe('${recipe.id}')">Edit</button>
+        <button class="btn danger" onclick="deleteRecipe('${recipe.id}')">Xóa</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showRecipeForm(recipe) {
+  const form = document.getElementById('recipe-form');
+  if (!form) return;
+  form.classList.add('active');
+  editingRecipeId = recipe?.id || null;
+  document.getElementById('recipe-title').value = recipe?.title || '';
+  document.getElementById('recipe-category').value = recipe?.category || 'Excel';
+  document.getElementById('recipe-type').value = recipe?.type || 'Formula';
+  document.getElementById('recipe-content').value = recipe?.content || '';
+  document.getElementById('recipe-note').value = recipe?.note || '';
+  document.getElementById('recipe-tags').value = (recipe?.tags || []).join(', ');
+  document.getElementById('recipe-save-btn').textContent = editingRecipeId ? 'Update recipe' : 'Save recipe';
+  setTimeout(() => document.getElementById('recipe-title')?.focus(), 50);
+}
+
+function hideRecipeForm() {
+  document.getElementById('recipe-form')?.classList.remove('active');
+  editingRecipeId = null;
+}
+
+function saveRecipe() {
+  const title = document.getElementById('recipe-title').value.trim();
+  const content = document.getElementById('recipe-content').value;
+  if (!title || !content.trim()) {
+    alert('Cần nhập tên recipe và nội dung để copy.');
+    return;
+  }
+  const now = Date.now();
+  const recipe = normalizeRecipe({
+    id: editingRecipeId || undefined,
+    title,
+    category: document.getElementById('recipe-category').value,
+    type: document.getElementById('recipe-type').value,
+    content,
+    note: document.getElementById('recipe-note').value.trim(),
+    tags: document.getElementById('recipe-tags').value,
+    favorite: editingRecipeId ? recipes.find(r => r.id === editingRecipeId)?.favorite : false,
+    createdAt: editingRecipeId ? recipes.find(r => r.id === editingRecipeId)?.createdAt : now,
+    updatedAt: now,
+    usedAt: editingRecipeId ? recipes.find(r => r.id === editingRecipeId)?.usedAt : 0
+  });
+  if (editingRecipeId) recipes = recipes.map(r => r.id === editingRecipeId ? recipe : r);
+  else recipes.unshift(recipe);
+  saveRecipesToStorage();
+  hideRecipeForm();
+  renderRecipes();
+}
+
+function editRecipe(id) {
+  const recipe = recipes.find(r => r.id === id);
+  if (recipe) showRecipeForm(recipe);
+}
+
+function deleteRecipe(id) {
+  const recipe = recipes.find(r => r.id === id);
+  if (!recipe || !confirm(`Xóa recipe "${recipe.title}"?`)) return;
+  recipes = recipes.filter(r => r.id !== id);
+  saveRecipesToStorage();
+  renderRecipes();
+}
+
+function toggleRecipeFavorite(id) {
+  recipes = recipes.map(r => r.id === id ? { ...r, favorite: !r.favorite, updatedAt: Date.now() } : r);
+  saveRecipesToStorage();
+  renderRecipes();
+}
+
+function copyRecipe(id, btn) {
+  const recipe = recipes.find(r => r.id === id);
+  if (!recipe) return;
+  navigator.clipboard.writeText(recipe.content).then(() => {
+    recipe.usedAt = Date.now();
+    saveRecipesToStorage();
+    if (btn) {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 1400);
+    }
+  }).catch(() => alert('Không copy được. Hãy copy thủ công từ card recipe.'));
+}
+
+function exportRecipes() {
+  const blob = new Blob([JSON.stringify(recipes, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, 'sidekick-quick-recipes.json');
+}
+
+function importRecipes(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error('JSON phải là một array recipe.');
+      const incoming = data.map(normalizeRecipe);
+      const byId = new Map(recipes.map(r => [r.id, r]));
+      incoming.forEach(r => byId.set(r.id, r));
+      recipes = Array.from(byId.values());
+      saveRecipesToStorage();
+      renderRecipes();
+      alert(`Đã import ${incoming.length} recipe.`);
+    } catch (error) {
+      alert('Không import được JSON: ' + error.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetStarterRecipes() {
+  if (!confirm('Thêm lại bộ starter recipes? Các recipe hiện có vẫn được giữ nếu khác ID.')) return;
+  recipes = [...starterRecipes.map(normalizeRecipe), ...recipes];
+  const seen = new Set();
+  recipes = recipes.filter(r => {
+    const key = `${r.title}|${r.content}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  saveRecipesToStorage();
+  renderRecipes();
+}
+
+renderRecipes();
+
+// ────────────────────────────────────────────────────────
+// COMMAND PALETTE
+// ────────────────────────────────────────────────────────
+const COMMAND_RECENT_KEY = 'sidekick-command-recents';
+let commandPaletteItems = [];
+let commandPaletteActiveIndex = 0;
+
+const commandTools = [
+  { key:'tool:text', kind:'Tool', icon:'TXT', title:'Text Cleaner', subtitle:'Clean copied text, strip HTML, normalize spacing', tab:'text', keywords:'clean copy text html whitespace duplicate line' },
+  { key:'tool:encode', kind:'Tool', icon:'VI', title:'Chuyển mã tiếng Việt', subtitle:'Unicode, ASCII không dấu, VIQR, Telex', tab:'encode', keywords:'vietnamese unicode ascii viqr telex slug' },
+  { key:'tool:word', kind:'Tool', icon:'ABC', title:'Word Counter', subtitle:'Count words, characters, readability and top words', tab:'word', keywords:'word count read time frequency' },
+  { key:'tool:json', kind:'Tool', icon:'{}', title:'JSON Formatter', subtitle:'Format, minify, validate and sort JSON', tab:'json', keywords:'json format minify validate sort' },
+  { key:'tool:regex', kind:'Tool', icon:'.*', title:'Regex Tester', subtitle:'Test regex, inspect matches and replace text', tab:'regex', keywords:'regex regexp match replace pattern' },
+  { key:'tool:base64', kind:'Tool', icon:'64', title:'Base64 / URL Encode', subtitle:'Encode/decode text, files and URL strings', tab:'base64', keywords:'base64 url encode decode file' },
+  { key:'tool:recipes', kind:'Tool', icon:'★', title:'Quick Recipes', subtitle:'Search and store formulas, prompts, snippets and regex', tab:'recipes', keywords:'recipe snippet excel prompt formula cheat sheet' },
+  { key:'tool:color', kind:'Tool', icon:'CLR', title:'Color Converter', subtitle:'HEX, RGB, HSL, HSV, CMYK and palettes', tab:'color', keywords:'color hex rgb hsl cmyk palette' },
+  { key:'tool:pdf', kind:'Tool', icon:'PDF', title:'PDF Tools', subtitle:'Merge, split, reorder, edit, compress, Word and PPTX', tab:'pdf', keywords:'pdf merge split edit compress word pptx resize rotate' },
+  { key:'tool:utm', kind:'Tool', icon:'UTM', title:'UTM Builder', subtitle:'Build tracking URLs and save campaign history', tab:'utm', keywords:'utm tracking campaign url builder' }
+];
+
+function getCommandRecents() {
+  try { return JSON.parse(localStorage.getItem(COMMAND_RECENT_KEY) || '[]'); }
+  catch (error) { return []; }
+}
+
+function rememberCommand(key) {
+  const recents = [key, ...getCommandRecents().filter(item => item !== key)].slice(0, 8);
+  localStorage.setItem(COMMAND_RECENT_KEY, JSON.stringify(recents));
+}
+
+function getCommandPaletteItems() {
+  const recipeItems = (typeof recipes === 'undefined' ? [] : recipes).map(recipe => ({
+    key: `recipe:${recipe.id}`,
+    kind: 'Recipe',
+    icon: recipe.category.slice(0, 3).toUpperCase(),
+    title: recipe.title,
+    subtitle: `${recipe.category} / ${recipe.type} / ${(recipe.tags || []).map(t => '#' + t).join(' ')}`,
+    keywords: getRecipeSearchText(recipe),
+    recipeId: recipe.id
+  }));
+  const items = [...commandTools, ...recipeItems];
+  const query = (document.getElementById('cmdk-input')?.value || '').trim().toLowerCase();
+  const recents = getCommandRecents();
+  const scoreRecent = item => {
+    const index = recents.indexOf(item.key);
+    return index === -1 ? 999 : index;
+  };
+  if (!query) {
+    return items.sort((a, b) => scoreRecent(a) - scoreRecent(b)).slice(0, 12);
+  }
+  const tokens = query.split(/\s+/).filter(Boolean);
+  return items.filter(item => {
+    const haystack = [item.title, item.subtitle, item.kind, item.key, item.keywords].join(' ').toLowerCase();
+    return tokens.every(token => haystack.includes(token));
+  }).sort((a, b) => {
+    const aTitle = a.title.toLowerCase().startsWith(query) ? 0 : 1;
+    const bTitle = b.title.toLowerCase().startsWith(query) ? 0 : 1;
+    if (aTitle !== bTitle) return aTitle - bTitle;
+    return scoreRecent(a) - scoreRecent(b);
+  }).slice(0, 24);
+}
+
+function openCommandPalette() {
+  const overlay = document.getElementById('cmdk-overlay');
+  const input = document.getElementById('cmdk-input');
+  overlay?.classList.add('active');
+  if (input) {
+    input.value = '';
+    setTimeout(() => input.focus(), 20);
+  }
+  commandPaletteActiveIndex = 0;
+  renderCommandPalette();
+}
+
+function closeCommandPalette() {
+  document.getElementById('cmdk-overlay')?.classList.remove('active');
+}
+
+function renderCommandPalette() {
+  const list = document.getElementById('cmdk-list');
+  if (!list) return;
+  commandPaletteItems = getCommandPaletteItems();
+  if (commandPaletteActiveIndex >= commandPaletteItems.length) commandPaletteActiveIndex = 0;
+  if (!commandPaletteItems.length) {
+    list.innerHTML = '<div class="cmdk-empty">No tools or recipes found.</div>';
+    return;
+  }
+  list.innerHTML = commandPaletteItems.map((item, index) => `
+    <button class="cmdk-item ${index === commandPaletteActiveIndex ? 'active' : ''}" onclick="runCommandPaletteItem(${index})" onmouseenter="commandPaletteActiveIndex=${index};renderCommandPalette()">
+      <span class="cmdk-icon">${htmlEscape(item.icon)}</span>
+      <span>
+        <span class="cmdk-title">${htmlEscape(item.title)}</span>
+        <span class="cmdk-subtitle">${htmlEscape(item.subtitle)}</span>
+      </span>
+      <span class="cmdk-kind">${htmlEscape(item.kind)}</span>
+    </button>
+  `).join('');
+  list.querySelector('.cmdk-item.active')?.scrollIntoView({ block: 'nearest' });
+}
+
+function handleCommandPaletteKey(event) {
+  if (event.key === 'Escape') {
+    closeCommandPalette();
+    return;
+  }
+  if (!commandPaletteItems.length) return;
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    commandPaletteActiveIndex = (commandPaletteActiveIndex + 1) % commandPaletteItems.length;
+    renderCommandPalette();
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    commandPaletteActiveIndex = (commandPaletteActiveIndex - 1 + commandPaletteItems.length) % commandPaletteItems.length;
+    renderCommandPalette();
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    runCommandPaletteItem(commandPaletteActiveIndex);
+  }
+}
+
+function runCommandPaletteItem(index) {
+  const item = commandPaletteItems[index];
+  if (!item) return;
+  rememberCommand(item.key);
+  if (item.tab) {
+    switchTab(item.tab);
+    closeCommandPalette();
+    return;
+  }
+  if (item.recipeId) {
+    const recipe = recipes.find(r => r.id === item.recipeId);
+    if (!recipe) return;
+    navigator.clipboard.writeText(recipe.content).then(() => {
+      recipe.usedAt = Date.now();
+      saveRecipesToStorage();
+      switchTab('recipes');
+      closeCommandPalette();
+      renderRecipes();
+    });
+  }
+}
+
+document.addEventListener('keydown', event => {
+  const tag = document.activeElement?.tagName;
+  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    openCommandPalette();
+  } else if (event.key === 'Escape' && document.getElementById('cmdk-overlay')?.classList.contains('active')) {
+    closeCommandPalette();
+  } else if (event.key === '/' && !isTyping) {
+    event.preventDefault();
+    openCommandPalette();
+  }
+});
+
+async function checkPdfBackendHealth() {
+  const btn = document.getElementById('pdf-health-btn');
+  const status = document.getElementById('pdf-health-status');
+  if (!status) return;
+  const original = btn?.textContent || 'Check backend';
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
+  status.textContent = 'Checking PDF backend...';
+  status.style.color = 'var(--text-tertiary)';
+  try {
+    const res = await fetch(`${PDF_API_BASE}/health`, { method: 'GET', mode: 'cors', signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    status.textContent = `Backend OK / Ghostscript: ${data.ghostscript === 'true' ? 'available' : 'missing'}`;
+    status.style.color = data.ghostscript === 'true' ? 'var(--accent-text)' : 'var(--danger-text)';
+  } catch (error) {
+    status.textContent = `Backend unavailable: ${error.message}`;
+    status.style.color = 'var(--danger-text)';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
+  }
+}
 
 // ────────────────────────────────────────────────────────
 // AUTH

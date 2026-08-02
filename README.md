@@ -12,8 +12,10 @@ Bộ công cụ nội bộ chạy hoàn toàn trên trình duyệt (không cần
 | **JSON Formatter** | Format, minify, validate, sort keys |
 | **Regex Tester** | Test regex với highlight, replace, group capture |
 | **Base64** | Encode/decode text và file |
+| **Quick Recipes** | Lưu và copy nhanh công thức Excel, regex, CSS, prompt, UTM naming và snippet hay dùng |
 | **Color Converter** | HEX ↔ RGB ↔ HSL ↔ HSV ↔ CMYK + palette |
 | **PDF Tools** | Ghép (+ resize), tách, xóa trang, đổi thứ tự trang, xoay, resize, edit PDF, PDF → Word, PDF → PPTX |
+| **Command Palette** | `Ctrl+K` để mở nhanh tool hoặc copy Quick Recipes |
 
 ## Backend PDF nâng cao
 
@@ -65,5 +67,6 @@ localStorage.setItem('sidekickPdfApiBase', 'https://YOUR_CLOUD_RUN_URL')
 ## Lưu ý
 
 - Phần PDF cơ bản xử lý **client-side**; edit/convert Word nâng cao sẽ upload PDF lên Cloud Run backend nếu được cấu hình
+- Trong PDF Tools có nút **Check backend** để kiểm tra Cloud Run và Ghostscript
 - Không cần đăng nhập, không cần backend
 - Tất cả dữ liệu ở trong browser, không lưu lại sau khi đóng tab
