@@ -2206,7 +2206,11 @@ function toggleTheme() {
 // ────────────────────────────────────────────────────────
 // NAV
 // ────────────────────────────────────────────────────────
+const ACTIVE_TAB_KEY = 'sidekick-active-tab';
+const VALID_TOOL_TABS = ['text','encode','word','json','regex','base64','recipes','color','pdf','utm'];
+
 function switchTab(name, el) {
+  if (!VALID_TOOL_TABS.includes(name)) name = 'text';
   document.querySelectorAll('.tool-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const pane = document.getElementById('tab-' + name);
@@ -2214,7 +2218,16 @@ function switchTab(name, el) {
     (item.getAttribute('onclick') || '').includes(`switchTab('${name}'`));
   if (pane) pane.classList.add('active');
   if (nav) nav.classList.add('active');
+  localStorage.setItem(ACTIVE_TAB_KEY, name);
 }
+
+function restoreActiveTab() {
+  const saved = localStorage.getItem(ACTIVE_TAB_KEY);
+  if (saved && VALID_TOOL_TABS.includes(saved)) switchTab(saved);
+}
+
+restoreActiveTab();
+
 function fileMatchesAccept(file, accept) {
   if (!accept) return true;
   const tokens = accept.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -2731,6 +2744,8 @@ const pdfUndoStack = [];
 const pdfRedoStack = [];
 const PDF_UNDO_LIMIT = 30;
 const PDF_API_BASE = localStorage.getItem('sidekickPdfApiBase') || 'https://sidekick-backend-12809406757.asia-southeast1.run.app';
+const ACTIVE_PDF_TAB_KEY = 'sidekick-active-pdf-tab';
+const VALID_PDF_TABS = ['merge','split','delete','reorder','rotate','resize','edit','word','pptx','compress'];
 let reorderPageOrder = [];
 let reorderDragIndex = null;
 let reorderThumbObserver = null;
@@ -2751,11 +2766,23 @@ function ensurePdfJs() {
 }
 
 function switchPdf(mode, el) {
-  ['merge','split','delete','reorder','rotate','resize','edit','word','pptx','compress'].forEach(m => document.getElementById('pdf-'+m).style.display='none');
+  if (!VALID_PDF_TABS.includes(mode)) mode = 'merge';
+  VALID_PDF_TABS.forEach(m => document.getElementById('pdf-'+m).style.display='none');
   document.getElementById('pdf-'+mode).style.display='block';
   document.querySelectorAll('#tab-pdf .tag').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
+  const tag = el || Array.from(document.querySelectorAll('#tab-pdf .tag')).find(item =>
+    (item.getAttribute('onclick') || '').includes(`switchPdf('${mode}'`));
+  if (tag) tag.classList.add('active');
+  localStorage.setItem(ACTIVE_PDF_TAB_KEY, mode);
 }
+
+function restoreActivePdfTab() {
+  const saved = localStorage.getItem(ACTIVE_PDF_TAB_KEY);
+  if (saved && VALID_PDF_TABS.includes(saved)) switchPdf(saved);
+}
+
+restoreActivePdfTab();
+
 function addMergeFiles(input) {
   Array.from(input.files).forEach(f => {
     mergeFiles.push(f);
