@@ -1149,6 +1149,9 @@
     </div>
 
     <div class="sidebar-section">File</div>
+    <div class="nav-item" onclick="switchTab('export',this)">
+      <span class="nav-icon">⇩</span><span>File Export</span>
+    </div>
     <div class="nav-item" onclick="switchTab('pdf',this)">
       <span class="nav-icon">▣</span><span>PDF Tools</span>
     </div>
@@ -1161,6 +1164,30 @@
 
   <!-- MAIN -->
   <div class="main">
+
+    <div class="tool-pane" id="tab-export">
+      <div class="tool-header">
+        <div class="tool-title">File Export</div>
+        <div class="tool-desc">Dán nội dung, thêm tệp và tải xuống ngay trên trình duyệt.</div>
+      </div>
+      <label class="field-label" for="export-text">Nội dung văn bản / log lỗi</label>
+      <textarea id="export-text" placeholder="Dán log lỗi, code hoặc Markdown ở đây…" style="min-height:240px; flex:1;" spellcheck="false"></textarea>
+      <div id="export-stats" class="tool-desc" aria-live="polite"></div>
+      <label class="field-label" for="export-files">Đính kèm ảnh, video hoặc tệp khác</label>
+      <input id="export-files" type="file" multiple>
+      <div class="tool-desc">Có thể kéo thả tệp vào khung này hoặc dán ảnh từ clipboard. Tệp được giữ nguyên; chọn ZIP để xuất cùng văn bản. Chưa hỗ trợ chuyển mã video hoặc OCR.</div>
+      <ul id="export-file-list" style="list-style:none; display:grid; gap:8px;"></ul>
+      <div class="btn-row" style="flex-wrap:wrap; align-items:end;">
+        <div style="flex:1; min-width:160px;"><label class="field-label" for="export-name">Tên file</label><input id="export-name" type="text" value="error-log" placeholder="error-log"></div>
+        <div><label class="field-label" for="export-format">Định dạng xuất</label><select id="export-format">
+          <option value="txt">TXT — văn bản UTF-8</option><option value="md">Markdown (.md)</option><option value="json">JSON — trường content</option><option value="html">HTML — văn bản dễ đọc</option><option value="zip">ZIP — văn bản + tệp gốc</option>
+        </select></div>
+        <button class="btn primary" id="export-download" type="button">Tải file</button>
+        <button class="btn" id="export-clear" type="button">Xóa nội dung</button>
+      </div>
+      <div class="tool-desc">ZIP chứa content.txt, content.md và thư mục attachments. Nội dung chỉ nằm trong tab hiện tại, không được tải lên máy chủ.</div>
+      <div id="export-status" role="status" style="font-size:13px; overflow-wrap:anywhere;"></div>
+    </div>
 
     <!-- ===== TEXT CLEANER ===== -->
     <div class="tool-pane active" id="tab-text">
@@ -2207,7 +2234,7 @@ function toggleTheme() {
 // NAV
 // ────────────────────────────────────────────────────────
 const ACTIVE_TAB_KEY = 'sidekick-active-tab';
-const VALID_TOOL_TABS = ['text','encode','word','json','regex','base64','recipes','color','pdf','utm'];
+const VALID_TOOL_TABS = ['text','encode','word','json','regex','base64','recipes','color','pdf','utm','export'];
 
 function switchTab(name, el) {
   if (!VALID_TOOL_TABS.includes(name)) name = 'text';
@@ -5108,6 +5135,7 @@ let commandPaletteItems = [];
 let commandPaletteActiveIndex = 0;
 
 const commandTools = [
+  { key:'tool:export', kind:'Tool', icon:'⇩', title:'File Export', subtitle:'Dán log, văn bản, ảnh, video và xuất TXT, Markdown, JSON, HTML, ZIP', tab:'export', keywords:'export download file txt markdown log error zip xuất lưu tải ảnh video' },
   { key:'tool:text', kind:'Tool', icon:'TXT', title:'Text Cleaner', subtitle:'Clean copied text, strip HTML, normalize spacing', tab:'text', keywords:'clean copy text html whitespace duplicate line' },
   { key:'tool:encode', kind:'Tool', icon:'VI', title:'Chuyển mã tiếng Việt', subtitle:'Unicode, ASCII không dấu, VIQR, Telex', tab:'encode', keywords:'vietnamese unicode ascii viqr telex slug' },
   { key:'tool:word', kind:'Tool', icon:'ABC', title:'Word Counter', subtitle:'Count words, characters, readability and top words', tab:'word', keywords:'word count read time frequency' },
@@ -5475,5 +5503,6 @@ function authUpdateTopbar(email) {
   authShowOverlay();
 })();
 </script>
+<script src="file-export.js"></script>
 </body>
 </html>

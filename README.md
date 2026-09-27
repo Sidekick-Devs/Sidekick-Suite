@@ -12,10 +12,22 @@ Bộ công cụ nội bộ chạy hoàn toàn trên trình duyệt (không cần
 | **JSON Formatter** | Format, minify, validate, sort keys |
 | **Regex Tester** | Test regex với highlight, replace, group capture |
 | **Base64** | Encode/decode text và file |
+| **File Export** | Dán log/văn bản để xuất TXT, Markdown, JSON, HTML; đóng gói ảnh, video và tệp gốc cùng văn bản thành ZIP |
 | **Quick Recipes** | Lưu và copy nhanh công thức Excel, regex, CSS, prompt, UTM naming và snippet hay dùng |
 | **Color Converter** | HEX ↔ RGB ↔ HSL ↔ HSV ↔ CMYK + palette |
 | **PDF Tools** | Ghép (+ resize), tách, xóa trang, đổi thứ tự trang, xoay, resize, edit PDF, PDF → Word, PDF → PPTX |
 | **Command Palette** | `Ctrl+K` để mở nhanh tool hoặc copy Quick Recipes |
+
+## Dùng File Export
+
+1. Mở **File → File Export** hoặc tìm bằng `Ctrl+K`.
+2. Dán log/văn bản, nhập tên file và chọn TXT hoặc Markdown để giữ nguyên nội dung UTF-8. JSON lưu văn bản trong trường `content`; HTML hiển thị văn bản an toàn, giữ xuống dòng.
+3. Có thể chọn nhiều tệp, kéo thả hoặc dán ảnh từ clipboard. Khi có tệp đính kèm, dùng ZIP: gói gồm `content.txt`, `content.md` có liên kết đến tệp và thư mục `attachments/`. Các tệp trùng tên được đánh số để tránh ghi đè.
+4. Nhấn **Tải file**. Dữ liệu được xử lý trong tab, không lưu nội dung vào localStorage hoặc tải lên backend. Đóng/tải lại tab sẽ mất nội dung chưa xuất.
+
+Ảnh và video được giữ nguyên định dạng gốc trong ZIP; công cụ chưa chuyển mã media, OCR hoặc xuất DOCX/PDF. ZIP cần thư viện JSZip đã có trên trang và dùng bộ nhớ trình duyệt, nên tệp lớn phụ thuộc bộ nhớ thiết bị.
+
+Kiểm tra logic export: `node --test tests/file-export.test.cjs` (ZIP được giả lập để kiểm tra tên tệp và dữ liệu đầu vào).
 
 ## Backend PDF nâng cao
 

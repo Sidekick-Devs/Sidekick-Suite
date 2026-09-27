@@ -27,6 +27,24 @@ localStorage.setItem('sidekickPdfApiBase', 'http://localhost:8080')
 
 ## Deploy Cloud Run
 
+### Đăng nhập OTP khi chạy frontend local
+
+Cloud Run cần cho phép đúng origin của frontend trong `ALLOWED_ORIGINS`, gồm cả port. Cấu hình dùng cho production và Live Server port 5501:
+
+```text
+https://sidekick-devs.github.io,http://127.0.0.1:5501,http://localhost:5501
+```
+
+Nếu email OTP đã đến nhưng giao diện báo lỗi kết nối, kiểm tra CORS: trình duyệt có thể gửi POST nhưng chặn đọc phản hồi khi origin chưa được phép. Cả `/auth/send-code` và `/auth/verify-code` đều cần origin này. Khi đổi port local, bổ sung origin tương ứng và giữ domain production. Không dùng `mode: 'no-cors'` vì frontend cần đọc phản hồi và token đăng nhập.
+
+PowerShell: cập nhật riêng biến CORS, giữ các biến môi trường khác bằng flags file để tránh lỗi dấu phẩy của gcloud trên Windows:
+
+```powershell
+$corsFlags = Join-Path $env:TEMP 'sidekick-cors-flags.json'
+@{ '--update-env-vars' = @{ ALLOWED_ORIGINS = 'https://sidekick-devs.github.io,http://127.0.0.1:5501,http://localhost:5501' } } | ConvertTo-Json | Set-Content -LiteralPath $corsFlags -Encoding ascii
+gcloud.cmd run services update sidekick-backend --project project-46195ba0-41f0-4a5a-af7 --region asia-southeast1 --flags-file=$corsFlags
+```
+
 ```bash
 gcloud run deploy sidekick-backend ^
   --source backend/pdf_service ^
