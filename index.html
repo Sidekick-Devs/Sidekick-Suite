@@ -8,6 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
   <script src="https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <style>
     @font-face {
       font-family: 'Google Sans';
@@ -1058,6 +1059,17 @@
     }
     .freq-badge strong { color: var(--accent); }
 
+    /* QR CODE */
+    #tab-qr [hidden] { display: none !important; }
+    .qr-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; }
+    .qr-form { display: flex; flex-direction: column; gap: 14px; }
+    .qr-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 12px; }
+    .qr-preview { background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-lg); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .qr-preview svg { width: 100%; height: 100%; display: block; }
+    .qr-empty { font-size: 12px; color: #a8a29e; padding: 24px; text-align: center; }
+    .qr-section { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: -4px; }
+    .qr-side .btn-row .btn { flex: 1; }
+
     /* DIVIDER */
     hr { border: none; border-top: 1px solid var(--border); }
 
@@ -1078,6 +1090,8 @@
       .pdf-editor-layout, .reorder-preview-panel { grid-template-columns: 1fr; }
       .pdf-edit-shell { grid-template-columns: 1fr; }
       .pdf-left-col { display: none; }
+      .qr-layout { grid-template-columns: 1fr; }
+      .qr-side { position: static; }
     }
   </style>
 </head>
@@ -1159,6 +1173,9 @@
     <div class="sidebar-section">Marketing</div>
     <div class="nav-item" onclick="switchTab('utm',this)">
       <span class="nav-icon">🔗</span><span>UTM Builder</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('qr',this)">
+      <span class="nav-icon">▦</span><span>QR Code</span>
     </div>
   </div>
 
@@ -2175,6 +2192,113 @@
       </div>
     </div>
 
+    <!-- ===== QR CODE ===== -->
+    <div class="tool-pane" id="tab-qr">
+      <div class="tool-header">
+        <div class="tool-title">QR Code</div>
+        <div class="tool-desc">Tạo QR danh thiếp (vCard): quét bằng camera điện thoại là mở thẳng danh bạ với đủ thông tin, chỉ cần bấm Lưu.</div>
+      </div>
+
+      <div class="tag-row" aria-label="Loại QR">
+        <span class="tag active" data-qr-tab="vcard">👤 Danh thiếp (vCard)</span>
+        <span class="tag" data-qr-tab="url">🔗 Link</span>
+        <span class="tag" data-qr-tab="text">✎ Văn bản</span>
+        <span class="tag" data-qr-tab="wifi">📶 WiFi</span>
+        <span class="tag" data-qr-tab="email">✉ Email</span>
+        <span class="tag" data-qr-tab="phone">☎ Gọi điện</span>
+      </div>
+
+      <div class="qr-layout">
+        <div class="qr-form">
+          <div data-qr-type="vcard" class="qr-form">
+            <div class="qr-section">Họ tên</div>
+            <div class="grid-2">
+              <div><label class="field-label" for="qr-f-vc-family">Họ</label><input type="text" id="qr-f-vc-family" data-qr="family" placeholder="Nguyễn"></div>
+              <div><label class="field-label" for="qr-f-vc-given">Tên đệm và tên <span style="color:var(--danger)">*</span></label><input type="text" id="qr-f-vc-given" data-qr="given" placeholder="Văn An"></div>
+            </div>
+            <div class="qr-section">Công việc</div>
+            <div class="grid-2">
+              <div><label class="field-label" for="qr-f-vc-org">Công ty</label><input type="text" id="qr-f-vc-org" data-qr="org" placeholder="Sidekick Communications Ltd"></div>
+              <div><label class="field-label" for="qr-f-vc-dept">Phòng ban</label><input type="text" id="qr-f-vc-dept" data-qr="dept" placeholder="Marketing"></div>
+              <div><label class="field-label" for="qr-f-vc-title">Chức danh</label><input type="text" id="qr-f-vc-title" data-qr="title" placeholder="Account Manager"></div>
+              <div><label class="field-label" for="qr-f-vc-url">Website</label><input type="text" id="qr-f-vc-url" data-qr="url" placeholder="sidekick.vn" inputmode="url"></div>
+            </div>
+            <div class="qr-section">Liên hệ</div>
+            <div class="grid-2">
+              <div><label class="field-label" for="qr-f-vc-mobile">Di động</label><input type="text" id="qr-f-vc-mobile" data-qr="mobile" placeholder="+84 912 345 678" inputmode="tel"></div>
+              <div><label class="field-label" for="qr-f-vc-work">Điện thoại công ty</label><input type="text" id="qr-f-vc-work" data-qr="work" placeholder="+84 28 1234 5678" inputmode="tel"></div>
+              <div><label class="field-label" for="qr-f-vc-email">Email</label><input type="text" id="qr-f-vc-email" data-qr="email" placeholder="ten@sidekick.vn" inputmode="email" autocomplete="off"></div>
+            </div>
+            <div class="qr-section">Địa chỉ</div>
+            <div><label class="field-label" for="qr-f-vc-street">Số nhà, đường, phường/quận</label><input type="text" id="qr-f-vc-street" data-qr="street" placeholder="12 Nguyễn Huệ, Phường Bến Nghé, Quận 1"></div>
+            <div class="grid-2">
+              <div><label class="field-label" for="qr-f-vc-city">Tỉnh / Thành phố</label><input type="text" id="qr-f-vc-city" data-qr="city" placeholder="TP. Hồ Chí Minh"></div>
+              <div><label class="field-label" for="qr-f-vc-country">Quốc gia</label><input type="text" id="qr-f-vc-country" data-qr="country" placeholder="Việt Nam"></div>
+            </div>
+            <div><label class="field-label" for="qr-f-vc-note">Ghi chú</label><textarea id="qr-f-vc-note" data-qr="note" placeholder="Gặp tại sự kiện…" style="min-height:60px; font-family:inherit;"></textarea></div>
+          </div>
+
+          <div data-qr-type="url" hidden>
+            <div><label class="field-label" for="qr-f-u-url">Link <span style="color:var(--danger)">*</span></label><input type="text" id="qr-f-u-url" data-qr="url" placeholder="https://sidekick.vn" inputmode="url"></div>
+            <div class="tool-desc">Cần gắn tracking? Tạo link ở UTM Builder rồi dán vào đây.</div>
+          </div>
+
+          <div data-qr-type="text" hidden>
+            <label class="field-label" for="qr-f-t-text">Văn bản</label>
+            <textarea id="qr-f-t-text" data-qr="text" placeholder="Nội dung hiển thị khi quét…" style="font-family:inherit;"></textarea>
+          </div>
+
+          <div data-qr-type="wifi" class="qr-form" hidden>
+            <div class="grid-2">
+              <div><label class="field-label" for="qr-f-w-ssid">Tên WiFi (SSID) <span style="color:var(--danger)">*</span></label><input type="text" id="qr-f-w-ssid" data-qr="ssid" placeholder="Sidekick-Guest"></div>
+              <div><label class="field-label" for="qr-f-w-password">Mật khẩu</label><input type="text" id="qr-f-w-password" data-qr="password" placeholder="" autocomplete="off"></div>
+              <div><label class="field-label" for="qr-f-w-auth">Bảo mật</label><select id="qr-f-w-auth" data-qr="auth"><option value="WPA">WPA/WPA2/WPA3</option><option value="WEP">WEP</option><option value="nopass">Không mật khẩu</option></select></div>
+            </div>
+            <label class="check-item" style="align-self:flex-start;"><input type="checkbox" data-qr="hidden"> Mạng ẩn</label>
+          </div>
+
+          <div data-qr-type="email" class="qr-form" hidden>
+            <div><label class="field-label" for="qr-f-e-to">Gửi đến <span style="color:var(--danger)">*</span></label><input type="text" id="qr-f-e-to" data-qr="to" placeholder="ten@sidekick.vn" inputmode="email"></div>
+            <div><label class="field-label" for="qr-f-e-subject">Tiêu đề</label><input type="text" id="qr-f-e-subject" data-qr="subject" placeholder=""></div>
+            <div><label class="field-label" for="qr-f-e-body">Nội dung</label><textarea id="qr-f-e-body" data-qr="body" style="min-height:70px; font-family:inherit;"></textarea></div>
+          </div>
+
+          <div data-qr-type="phone" hidden>
+            <div><label class="field-label" for="qr-f-p-number">Số điện thoại <span style="color:var(--danger)">*</span></label><input type="text" id="qr-f-p-number" data-qr="number" placeholder="+84 912 345 678" inputmode="tel"></div>
+          </div>
+
+          <div class="qr-section">Tùy chọn</div>
+          <div class="grid-2">
+            <div><label class="field-label" for="qr-ecc">Mức sửa lỗi</label><select id="qr-ecc">
+              <option value="L">L — 7%, QR thưa nhất</option><option value="M" selected>M — 15% (khuyên dùng)</option><option value="Q">Q — 25%</option><option value="H">H — 30%, chịu bẩn/che logo</option>
+            </select></div>
+            <div><label class="field-label" for="qr-color">Màu QR (nền luôn trắng)</label><input type="color" id="qr-color" value="#000000" style="width:100%; height:38px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-secondary); cursor:pointer;"></div>
+          </div>
+          <label class="check-item" id="qr-strip-wrap" style="align-self:flex-start;"><input type="checkbox" id="qr-strip"> Bỏ dấu tiếng Việt (QR thưa hơn, hợp máy quét cũ)</label>
+          <div>
+            <label class="field-label" for="qr-payload">Nội dung mã hóa</label>
+            <textarea id="qr-payload" class="output-area" readonly style="min-height:90px; font-size:12px;"></textarea>
+          </div>
+        </div>
+
+        <div class="qr-side">
+          <div class="qr-preview" id="qr-preview" aria-live="polite"></div>
+          <div class="tool-desc" id="qr-info" style="margin:0; text-align:center;"></div>
+          <div id="qr-warn" role="status" style="display:none;"></div>
+          <div class="btn-row">
+            <button class="btn success" id="qr-png" type="button" data-qr-needs>Tải PNG</button>
+            <button class="btn" id="qr-svg" type="button" data-qr-needs>Tải SVG</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="qr-vcf" type="button" data-qr-needs>Tải .vcf</button>
+            <button class="btn" id="qr-copy" type="button" data-qr-needs>Copy nội dung</button>
+          </div>
+          <button class="btn danger" id="qr-reset" type="button">Xóa thông tin</button>
+          <div class="tool-desc" style="margin:0;">Mở Camera (iPhone) hoặc Camera / Google Lens (Android), hướng vào mã và chạm thông báo "Thêm liên hệ". Dữ liệu chỉ xử lý trong trình duyệt.</div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /app -->
 
@@ -2234,7 +2358,7 @@ function toggleTheme() {
 // NAV
 // ────────────────────────────────────────────────────────
 const ACTIVE_TAB_KEY = 'sidekick-active-tab';
-const VALID_TOOL_TABS = ['text','encode','word','json','regex','base64','recipes','color','pdf','utm','export'];
+const VALID_TOOL_TABS = ['text','encode','word','json','regex','base64','recipes','color','pdf','utm','export','qr'];
 
 function switchTab(name, el) {
   if (!VALID_TOOL_TABS.includes(name)) name = 'text';
@@ -5145,7 +5269,8 @@ const commandTools = [
   { key:'tool:recipes', kind:'Tool', icon:'★', title:'Quick Recipes', subtitle:'Search and store formulas, prompts, snippets and regex', tab:'recipes', keywords:'recipe snippet excel prompt formula cheat sheet' },
   { key:'tool:color', kind:'Tool', icon:'CLR', title:'Color Converter', subtitle:'HEX, RGB, HSL, HSV, CMYK and palettes', tab:'color', keywords:'color hex rgb hsl cmyk palette' },
   { key:'tool:pdf', kind:'Tool', icon:'PDF', title:'PDF Tools', subtitle:'Merge, split, reorder, edit, compress, Word and PPTX', tab:'pdf', keywords:'pdf merge split edit compress word pptx resize rotate' },
-  { key:'tool:utm', kind:'Tool', icon:'UTM', title:'UTM Builder', subtitle:'Build tracking URLs and save campaign history', tab:'utm', keywords:'utm tracking campaign url builder' }
+  { key:'tool:utm', kind:'Tool', icon:'UTM', title:'UTM Builder', subtitle:'Build tracking URLs and save campaign history', tab:'utm', keywords:'utm tracking campaign url builder' },
+  { key:'tool:qr', kind:'Tool', icon:'QR', title:'QR Code / vCard', subtitle:'QR danh thiếp lưu thẳng vào danh bạ, link, WiFi, email, số điện thoại', tab:'qr', keywords:'qr code vcard danh thiep contact danh ba namecard business card wifi link ma qr' }
 ];
 
 function getCommandRecents() {
@@ -5504,5 +5629,6 @@ function authUpdateTopbar(email) {
 })();
 </script>
 <script src="file-export.js"></script>
+<script src="qr-code.js"></script>
 </body>
 </html>

@@ -16,6 +16,7 @@ Bộ công cụ nội bộ chạy hoàn toàn trên trình duyệt (không cần
 | **Quick Recipes** | Lưu và copy nhanh công thức Excel, regex, CSS, prompt, UTM naming và snippet hay dùng |
 | **Color Converter** | HEX ↔ RGB ↔ HSL ↔ HSV ↔ CMYK + palette |
 | **PDF Tools** | Ghép (+ resize), tách, xóa trang, đổi thứ tự trang, xoay, resize, edit PDF, PDF → Word, PDF → PPTX |
+| **QR Code** | QR danh thiếp vCard (quét là mở danh bạ, chỉ cần bấm Lưu), link, văn bản, WiFi, email, gọi điện; tải PNG/SVG/.vcf |
 | **Command Palette** | `Ctrl+K` để mở nhanh tool hoặc copy Quick Recipes |
 
 ## Dùng File Export
@@ -28,6 +29,17 @@ Bộ công cụ nội bộ chạy hoàn toàn trên trình duyệt (không cần
 Ảnh và video được giữ nguyên định dạng gốc trong ZIP; công cụ chưa chuyển mã media, OCR hoặc xuất DOCX/PDF. ZIP cần thư viện JSZip đã có trên trang và dùng bộ nhớ trình duyệt, nên tệp lớn phụ thuộc bộ nhớ thiết bị.
 
 Kiểm tra logic export: `node --test tests/file-export.test.cjs` (ZIP được giả lập để kiểm tra tên tệp và dữ liệu đầu vào).
+
+## Dùng QR Code (vCard)
+
+1. Mở **Marketing → QR Code** hoặc tìm `qr` / `vcard` bằng `Ctrl+K`. Loại mặc định là **Danh thiếp (vCard)**.
+2. Nhập họ tên, công ty, chức danh, số điện thoại, email, website, địa chỉ. QR cập nhật ngay; trường trống được bỏ qua.
+3. Tải **PNG** (≈1024px, đã có viền trắng) để in/đăng, **SVG** cho thiết kế, hoặc **.vcf** để gửi kèm email.
+4. Người nhận mở Camera iPhone hoặc Camera/Google Lens trên Android, chạm thông báo **Thêm liên hệ** → màn hình danh bạ đã điền sẵn → bấm **Lưu**.
+
+QR dùng vCard 3.0 (iOS và Android đều hỗ trợ) mã hóa UTF-8 nên giữ được dấu tiếng Việt. Thông tin càng nhiều QR càng dày; nếu cảnh báo "QR khá dày", in tối thiểu 3×3 cm hoặc bật **Bỏ dấu tiếng Việt** / giảm mức sửa lỗi. Nên dùng màu QR đậm trên nền trắng.
+
+Kiểm tra logic tạo nội dung QR: `node --test tests/qr-code.test.cjs`.
 
 ## Backend PDF nâng cao
 
